@@ -1,0 +1,125 @@
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { Card, CardContent } from "./components/ui/card";
+import { Button } from "./components/ui/button";
+import { Line } from "react-chartjs-2";
+
+import DailyScreen from "./screens/DailyScreen";
+import WeeklyScreen from "./screens/WeeklyScreen";
+import MonthlyScreen from "./screens/MonthlyScreen";
+import Login from "./screens/Login";
+
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from "chart.js";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const App = () => {
+  return (
+    <Router>
+      <div className="p-4">
+        <Header />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/daily" element={<DailyScreen />} />
+          <Route path="/weekly" element={<WeeklyScreen />} />
+          <Route path="/monthly" element={<MonthlyScreen />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+};
+
+const Header = () => (
+  <div className="flex justify-between items-center bg-gray-100 p-4 rounded-xl">
+    <h1 className="text-xl font-bold">Dexcom Gamified App</h1>
+    <nav className="flex gap-4">
+      <Link to="/daily" className="text-blue-600">Daily</Link>
+      <Link to="/weekly" className="text-blue-600">Weekly</Link>
+      <Link to="/monthly" className="text-blue-600">Monthly</Link>
+      <Link to="/login" className="text-blue-600">Login</Link>
+    </nav>
+  </div>
+);
+
+const Home = () => (
+  <Card>
+    <CardContent>
+      <h2 className="text-2xl font-semibold">Welcome to the Dexcom App!</h2>
+      <p>Navigate to the Daily, Weekly, or Monthly views to explore your data.</p>
+    </CardContent>
+  </Card>
+);
+
+
+const WeeklyScreen = () => (
+  <Card>
+    <CardContent>
+      <h2 className="text-xl font-semibold">Weekly Overview</h2>
+      <p>Chart placeholder</p>
+    </CardContent>
+  </Card>
+);
+
+const MonthlyScreen = () => (
+  <Card>
+    <CardContent>
+      <h2 className="text-xl font-semibold">Monthly Overview</h2>
+      <p>Chart placeholder</p>
+    </CardContent>
+  </Card>
+);
+
+const Login = () => {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log("Login attempt:", { username, password });
+  };
+
+  return (
+    <Card>
+      <CardContent>
+        <h2 className="text-xl font-semibold">Login</h2>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="border p-2 rounded"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="border p-2 rounded"
+          />
+          <Button type="submit">Login</Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default App;

@@ -1,0 +1,63 @@
+
+.body {
+    width:100%;
+    background-color: rgb(229, 249, 255) !important;
+
+    
+}
+.dailyChartHead {
+    justify-content: center;
+    padding:5px;
+    
+}
+
+.dateSelector {
+    
+
+}
+
+.classYellowBold {
+
+    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-size:15px;
+    font-weight: bolder;
+    color: rgba(152, 139, 0, 0.903);
+}
+
+.classRedBold {
+
+    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-size:15px;
+    font-weight: bolder;
+    color: rgba(255, 56, 56, 0.903);
+}
+
+.classOrangeBold {
+
+    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-size:15px;
+    font-weight: bolder;
+    color: rgba(195, 157, 92, 0.983);
+}
+
+.classGreenBold {
+
+    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-size:15px;
+    font-weight: bolder;
+    color: rgba(7, 124, 1, 0.903);
+}
+
+li {
+
+    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-size:15px;
+    font-weight: normal;
+    color: rgba(0, 0, 0, 0.903);
+    padding:0px;
+}
+
+ul {
+
+    padding:14px;
+}
