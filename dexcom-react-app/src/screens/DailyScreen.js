@@ -64,8 +64,8 @@ useEffect(() => {
 
   const fetchData = (date) => {
     Promise.all([
-        fetch(`http://localhost:3000/api/cgm?date=${date}`).then((res) => res.json()),
-        fetch(`http://localhost:3000/api/bolus?date=${date}`).then((res) => res.json())
+        fetch(`https://3tansqzb2f.execute-api.us-east-1.amazonaws.com/default/api/cgm?date=${date}`).then((res) => res.json()),
+        fetch(`https://3tansqzb2f.execute-api.us-east-1.amazonaws.com/default/api/bolus?date=${date}`).then((res) => res.json())
     ])
     .then(([cgmResponse, bolusResponse]) => {
         // ✅ Process CGM Data
@@ -106,7 +106,7 @@ useEffect(() => {
 
 const fetchDailyScores = async (date) => {
   try {
-    const response = await fetch(`http://localhost:3000/api/scores/1?date=${date}`);
+    const response = await fetch(`https://3tansqzb2f.execute-api.us-east-1.amazonaws.com/default/api/scores/1?date=${date}`);
     if (!response.ok) {
       throw new Error("Failed to fetch daily scores.");
     }
@@ -464,7 +464,7 @@ const updateDate = (days) => {
 
   // Reset the accordion
   setExpandedIndex(null);
-  
+
   // ✅ Fetch new data and detect events
   fetchData(newDate.toISOString().split("T")[0]);
 

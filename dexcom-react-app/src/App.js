@@ -4,9 +4,6 @@ import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 
 import DailyScreen from "./screens/DailyScreen";
-import WeeklyScreen from "./screens/WeeklyScreen";
-import MonthlyScreen from "./screens/MonthlyScreen";
-import Login from "./screens/Login"; 
 
 //Test
 
@@ -19,9 +16,6 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/daily" element={<DailyScreen />} />
-          <Route path="/weekly" element={<WeeklyScreen />} />
-          <Route path="/monthly" element={<MonthlyScreen />} />
-          <Route path="/login" element={<Login />} />
         </Routes>
       </div>
     </Router>
@@ -33,10 +27,7 @@ const Header = () => (
     <h1 >Dexcom Personal Trainer</h1>
     <nav >
       <Link to="/daily" className="text-blue-600">Daily</Link>
-      <Link to="/weekly" className="text-blue-600">Weekly</Link>
-      <Link to="/monthly" className="text-blue-600">Monthly</Link>
-      <Link to="/login" className="text-blue-600">Login</Link>
-    </nav>
+     </nav>
   </div>
 );
 

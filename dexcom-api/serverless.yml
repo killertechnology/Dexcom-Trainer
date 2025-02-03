@@ -1,0 +1,31 @@
+service: myDexcom-Trainer
+
+provider:
+  name: aws
+  runtime: nodejs18.x  # or another supported Node version (e.g., nodejs16.x)
+  stage: default
+  region: us-east-1
+
+functions:
+  app:
+    handler: index.handler
+    events:
+      - http:
+          path: /
+          method: get
+      - http:
+          path: api/users
+          method: get
+      - http:
+          path: api/cgm
+          method: get
+      - http:
+          path: api/alarms
+          method: get
+      - http:
+          path: api/bolus
+          method: get
+      - http:
+          path: api/scores/{userId}
+          method: get
+
