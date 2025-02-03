@@ -14,8 +14,7 @@ const App = () => {
       <div>
         <Header />
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/daily" element={<DailyScreen />} />
+          <Route path="/" element={<DailyScreen />} />
         </Routes>
       </div>
     </Router>
@@ -23,14 +22,16 @@ const App = () => {
 };
 
 const Header = () => (
-  <div>
+  <div align="center">
     <h1 >Dexcom Personal Trainer</h1>
-    <nav >
+     </div>
+);
+/*
+<nav >
       <Link to="/daily" className="text-blue-600">Daily</Link>
      </nav>
-  </div>
-);
-
+   
+*/
 const Home = () => (
   <Card>
     <CardContent>

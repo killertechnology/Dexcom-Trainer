@@ -1,7 +1,7 @@
 
 .body {
     width:100%;
-    background-color: rgb(229, 249, 255) !important;
+    background-color: #f5f3f0;
 
     
 }
@@ -11,18 +11,57 @@
     
 }
 
-.dateSelector {
-    
+.scoreboard {
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
 
+}
+
+.results_table {
+
+    background-color: #f5f3f0;
+    width:100%;
+    padding: 10px;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    
+    /* background-color: #d8cbb5; */
+}
+  
+.events_table {
+
+    width:90%;
+    padding-left: 15px;
+    padding-bottom: 10px;
+    height:1%;
+    vertical-align: top;
+    justify-content: center;
+   
+    /* background-color: #d8cbb5; */
 }
 
 .classYellowBold {
 
     font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-    font-size:15px;
+    font-size:14px;
     font-weight: bolder;
-    color: rgba(152, 139, 0, 0.903);
+    color: rgb(78, 78, 78);
 }
+
+.classYellowBold-image-container {
+    width: 50px;                /* set a width */
+    height: 45px;               /* set a height */
+    background-image: url('../public/images/green-buttons.png');  /* specify the image path */
+    background-size:50px;      /* ensure the image covers the container */
+    background-position: center; /* center the image */
+    background-repeat: no-repeat;/* prevent the image from repeating */
+    vertical-align: top;
+  }
+
+
+.imagebutton1 {
+    width:50px;
+}
+
+
 
 .classRedBold {
 
@@ -32,20 +71,63 @@
     color: rgba(255, 56, 56, 0.903);
 }
 
+.classRedBold-image-container {
+    width: 50px;                /* set a width */
+    height: 45px;               /* set a height */
+    background-image: url('../public/images/red-needle.png');  /* specify the image path */
+    background-size:50px;      /* ensure the image covers the container */
+    background-position: center; /* center the image */
+    background-repeat: no-repeat;/* prevent the image from repeating */
+    vertical-align: top;
+  }
+
+
+
+
+
+
+
 .classOrangeBold {
 
     font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
     font-size:15px;
     font-weight: bolder;
-    color: rgba(195, 157, 92, 0.983);
+    color: rgba(144, 112, 51, 0.983);
 }
+
+.classOrangeBold-image-container {
+    width: 50px;                /* set a width */
+    height: 45px;               /* set a height */
+    background-image: url('../public/images/red-buttons.png');  /* specify the image path */
+    background-size:50px;      /* ensure the image covers the container */
+    background-position: center; /* center the image */
+    background-repeat: no-repeat;/* prevent the image from repeating */
+    vertical-align: top;
+  }
+
+
+
+
+
 
 .classGreenBold {
 
     font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
     font-size:15px;
+    height: 45px;               /* set a height */
     font-weight: bolder;
     color: rgba(7, 124, 1, 0.903);
+}
+
+.classGreenBold-image-container {
+    width: 50px;                /* set a width */
+    height: 40px;               /* set a height */
+    background-image: url('../public/images/good-job.png');  /* specify the image path */
+    background-size:50px;      /* ensure the image covers the container */
+    background-position: center; /* center the image */
+    background-repeat: no-repeat;/* prevent the image from repeating */
+    vertical-align: top;
+
 }
 
 li {

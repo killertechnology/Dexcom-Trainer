@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { Line } from "react-chartjs-2";
+import { Bar, Line } from "react-chartjs-2";
 import Scoreboard from "./Scoreboard"; // Adjust the path if needed
+import Chart from 'chart.js/auto';
 
 import {
   Chart as ChartJS,
   CategoryScale,
+  BarController,
   LinearScale,
   PointElement,
   LineElement,
@@ -18,7 +20,9 @@ import {
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
 
+
 ChartJS.register(
+  BarController,
   CategoryScale,
   LinearScale,
   PointElement,
@@ -163,7 +167,7 @@ const detectBgSpikes = (data, bolusData) => {
 
           if (spikeDetected && (i - lastSpikeIndex >= numIntervalsForSpikeX)) {
               let { formatted, militaryTime } = formatTime(i);
-              addEvent(militaryTime, `${formatted} - BG/Carb Increase. Spike detected.`, 'classYellowBold');
+              addEvent(militaryTime, `${formatted} - BG/Carb Increase. Spike detected.`, 'classYellowBold','This is normal after a meal or snack.');
               
               lastSpikeIndex = i;
               let troughStart = findTroughStart(data, i);
@@ -268,9 +272,10 @@ const detectLateBolus = (data, bolusData, spikeTimes) => {
 
           if (spikeStart !== undefined) { // ✅ If valid spike found
               let { formatted: lateBolusFormatted, militaryTime: lateBolusMilitary } = formatTime(i);
-              
+              let _lateBolusMessage = "Heads up! Administering your bolus later than ideal can lead to higher post-meal blood sugar ";
+              _lateBolusMessage += "levels. Aim for a more timely dose to improve control.\n(–15 points!)";
               // ✅ Add event for late bolus
-              addEvent(lateBolusMilitary, `${lateBolusFormatted} - Late bolus detected!`, 'classRedBold');
+              addEvent(lateBolusMilitary, `${lateBolusFormatted} - Late bolus detected!`, 'classRedBold',_lateBolusMessage);
 
               // ✅ Store this bolus in the state to prevent duplicates
               newLateBolusIndexes[i] = lateBolusFormatted;
@@ -290,9 +295,16 @@ const detectEarlyBolus = (data, bolusData, spikeTimes) => {
 
           if (spikeStart !== undefined) { // ✅ If valid early bolus found
               let { formatted: earlyBolusFormatted, militaryTime: earlyBolusMilitary } = formatTime(i);
+              let _earlyBolusMessage = "Nice work! Being aware of upcoming meal intake and proactively providing a ";
+              _earlyBolusMessage+="proportional bolus helps to keep the spikes down to a minimum.\n(+20 points!)";
 
               // ✅ Add event for early bolus
-              addEvent(earlyBolusMilitary, `${earlyBolusFormatted} - Early bolus detected. Good Job!`, 'classGreenBold');
+              addEvent(
+                earlyBolusMilitary, 
+                `${earlyBolusFormatted} - Early bolus detected`, 
+                'classGreenBold',
+                _earlyBolusMessage,
+              );
 
               // ✅ Store this bolus in the state to prevent duplicates
               updatedIndexes[i] = earlyBolusFormatted;
@@ -332,12 +344,14 @@ const detectExpectedBolus = (data, bolusData) => {
                   let expectedBolusCenter = Math.floor((expectedBolusStart + expectedBolusEnd) / 2);
 
                   let { formatted: expectedBolusFormatted, militaryTime: expectedBolusMilitary } = formatTime(expectedBolusCenter);
+                  let _expectedBolusMessage = "Attention! Missing your scheduled bolus might cause your blood sugar to spike. "
+                  _expectedBolusMessage += "Remember to dose on time for better overall management.\n(–25 points!)";
 
                   addEvent(
                     expectedBolusMilitary,
                     `${expectedBolusFormatted} - Expected bolus (BG > 200 for 120 min).`,
                     'classOrangeBold',
-                  ' Expected Bolus Details Content'
+                    _expectedBolusMessage
                   );
 
                   // ✅ Store expected bolus bar data
@@ -373,9 +387,11 @@ const detectSupplementalBolus = (bolusData) => {
               !expectedBolusIndexes.hasOwnProperty(i)
           ) {
               let { formatted: supplementalBolusFormatted, militaryTime: supplementalBolusMilitary } = formatTime(i);
-              
+              let _supplementalBolusMessage = "Great job staying on top of things! \nA timely correction bolus helps bring your blood sugar ";
+              _supplementalBolusMessage += "back into the target range. Keep monitoring your levels for continued success.\n(+20 points!)";
+
               // ✅ Store in event list and highlight in UI
-              addEvent(supplementalBolusFormatted, `${supplementalBolusFormatted} - Supplemental Bolus detected.`);
+              addEvent(supplementalBolusFormatted, `${supplementalBolusFormatted} - Supplemental Bolus detected.`,'classGreenBold',_supplementalBolusMessage);
               newSupplementalBolusIndexes[i] = supplementalBolusFormatted;
           }
       }
@@ -596,12 +612,15 @@ const getBolusBarColor = (context) => {
   const toggleAccordion = (index) => {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
-
+  const eventDescription = `Late bolus detected!\nAdditional information here.`;
+  const htmlDescription = eventDescription.replace(/\n/g, '<br />');
   return (
-    <div className="dailyChartHead">
+    <div className="dailyChartHead" align="center">
       <Card>
         <CardContent>
-          <h2 className="text-xl font-semibold">Daily Blood Glucose Data</h2>
+        
+          <h3 className="text-xl font-semibold">Daily Blood Glucose Data</h3>
+          <Scoreboard dailyScore={dailyScore} />
           <div align="center">
             <Button onClick={() => updateDate(-1)}>← Back</Button>
             <input
@@ -615,48 +634,51 @@ const getBolusBarColor = (context) => {
           <div style={{ height: "400px", width: "99%" }}>
             <Line data={chartData} options={chartOptions} />
           </div>
-          <Scoreboard dailyScore={dailyScore} />
+          
           
 
           {eventMessages.length > 0 ? (
-            <table>
+            <table border={0} className="results_table">
               <tbody>
                 {eventMessages
                   .slice()
                   .sort((a, b) => a.time - b.time) // Ensure chronological order
                   .map((event, index) => (
                     <React.Fragment key={index}>
+                      <tr><td rowSpan={2} className= {event.className + `-image-container` }>
+                      <a
+                            onClick={() => toggleAccordion(index)}
+                            style={{
+                              cursor: "pointer",
+                              
+                            }}
+                          >
+                            <img src="../images/spacer.gif" className="imagebutton1" />
+
+                          </a></td></tr>
                       <tr>
                         <td className={event.className}>
-                          {event.description}
-                          <br />
                           <a
                             onClick={() => toggleAccordion(index)}
                             style={{
                               cursor: "pointer",
-                              color: "blue",
-                              textDecoration: "underline",
+                              
                             }}
                           >
-                            Learn More
+                            {event.description}
                           </a>
+                          
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={2} className="events_table accordion-content ">
                           {expandedIndex === index && (
-                            <div
-                              className="accordion-content"
-                              style={{
-                                marginTop: "5px",
-                                padding: "10px",
-                                backgroundColor: "#f1f1f1",
-                                borderRadius: "5px",
-                                border: "1px solid #ccc",
-                              }}
-                            >
-                              <p>
-                                {event.details ||
-                                  "Additional details about this event will appear here."}
-                              </p>
-                            </div>
-                          )}
+                            
+                             <div dangerouslySetInnerHTML={{ __html: event.details.replace(/\n/g, '<br />') }}
+                           >
+                                </div>
+                              
+                            )}
                         </td>
                       </tr>
                     </React.Fragment>
