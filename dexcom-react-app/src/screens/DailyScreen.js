@@ -333,7 +333,12 @@ const detectExpectedBolus = (data, bolusData) => {
 
                   let { formatted: expectedBolusFormatted, militaryTime: expectedBolusMilitary } = formatTime(expectedBolusCenter);
 
-                  addEvent(expectedBolusMilitary, `${expectedBolusFormatted} - Expected bolus (BG > 200 for 120 min).`, 'classOrangeBold');
+                  addEvent(
+                    expectedBolusMilitary,
+                    `${expectedBolusFormatted} - Expected bolus (BG > 200 for 120 min).`,
+                    'classOrangeBold',
+                  ' Expected Bolus Details Content'
+                  );
 
                   // ✅ Store expected bolus bar data
                   newExpectedBolusBars.push({
@@ -380,11 +385,11 @@ const detectSupplementalBolus = (bolusData) => {
 
 
 
-const addEvent = (time, description, className) => {
+const addEvent = (time, description, className, details) => {
   setEventMessages(prevEvents => {
       // Prevent duplicate events
       if (!prevEvents.some(event => event.time === time && event.description === description)) {
-          return [...prevEvents, { time, description, className }];
+          return [...prevEvents, { time, description, className, details }];
       }
       return prevEvents; // Return existing events if duplicate is found
   });
@@ -457,8 +462,12 @@ const updateDate = (days) => {
   // ✅ Clear existing events before fetching new data
   clearEvents();  
 
+  // Reset the accordion
+  setExpandedIndex(null);
+  
   // ✅ Fetch new data and detect events
   fetchData(newDate.toISOString().split("T")[0]);
+
 };
 
 
@@ -471,9 +480,9 @@ const updateDate = (days) => {
         label: "CGM Glucose Levels",
         data: cgmData,
         borderColor: "rgb(75, 192, 192)",
-        backgroundColor: "rgba(75, 192, 192, 0.2)",
+        backgroundColor: "rgba(187, 255, 255, 0.2)",
         pointRadius: 4,
-        pointBackgroundColor: "rgb(75, 192, 192)",
+        pointBackgroundColor: "rgb(203, 245, 245)",
         fill: true,
       },
       {

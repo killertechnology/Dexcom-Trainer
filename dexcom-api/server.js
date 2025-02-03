@@ -4,31 +4,12 @@ const router = express.Router();
 const mysql = require("mysql");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const dbConfig = require("./dbconfig");
-
+const db = require("./dbconfig");
+ 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-
-
-db.connect(err => {
-  if (err) {
-    console.error("❌ Error connecting to MySQL:", err);
-  } else {
-    console.log("✅ Successfully connected to MySQL");
-  }
-});
-
-
-
-db.connect((err) => {
-  if (err) {
-    console.error('Error connecting to MySQL:', err);
-  } else {
-    console.log('Connected to MySQL database.');
-  }
-});
 
 // ✅ Use router for endpoints
 router.get('/api/users', (req, res) => {
@@ -107,6 +88,6 @@ app.use(router);
 // Start server
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(Server running on http://localhost:${PORT});
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
