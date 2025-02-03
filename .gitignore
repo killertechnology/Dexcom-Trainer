@@ -7,6 +7,16 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+
+dexcom-react-app/dbConfig.js
+dexcom-api/dbConfig.js
+dexcom-api/dbLocalConfig.js
+dexcom-api/sshconfig.js
+dexcom-api/node_modules/
+dexcom-react-app/node_modules/
+
+
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
