@@ -388,7 +388,7 @@ const detectSupplementalBolus = (bolusData) => {
           ) {
               let { formatted: supplementalBolusFormatted, militaryTime: supplementalBolusMilitary } = formatTime(i);
               let _supplementalBolusMessage = "Great job staying on top of things! \nA timely correction bolus helps bring your blood sugar ";
-              _supplementalBolusMessage += "back into the target range. Keep monitoring your levels for continued success.\n(+20 points!)";
+              _supplementalBolusMessage += "back into the target range. Keep monitoring your levels for continued success.\n(+10 points!)";
 
               // ✅ Store in event list and highlight in UI
               addEvent(supplementalBolusFormatted, `${supplementalBolusFormatted} - Supplemental Bolus detected.`,'classGreenBold',_supplementalBolusMessage);
@@ -622,14 +622,14 @@ const getBolusBarColor = (context) => {
           <h3 className="text-xl font-semibold">Daily Blood Glucose Data</h3>
           <Scoreboard dailyScore={dailyScore} />
           <div align="center">
-            <Button onClick={() => updateDate(-1)}>← Back</Button>
+            <Button onClick={() => updateDate(-1)} className="dateSelect">← Back</Button>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="border p-2 rounded"
+              className="dateSelect"
             />
-            <Button onClick={() => updateDate(1)}>Next →</Button>
+            <Button onClick={() => updateDate(1)} className="dateSelect">Next →</Button>
           </div>
           <div style={{ height: "400px", width: "99%" }}>
             <Line data={chartData} options={chartOptions} />
