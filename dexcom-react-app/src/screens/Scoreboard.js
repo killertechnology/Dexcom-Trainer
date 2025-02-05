@@ -7,7 +7,7 @@ const Scoreboard = ({ dailyScore }) => {
     <Card className="mt-4 p-4">
       <CardContent>
       <div className="mt-4 p-4 border rounded-lg bg-gray-100">
-        <div className="text-lg bold">Scoreboard</div>
+        <div className="text-lg scoreboard"><br /><b>Scoreboard</b></div>
         {dailyScore ? (
           <table className="min-w-full border-collapse border border-gray-200 scoreboard">
             <tbody>

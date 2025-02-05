@@ -20,7 +20,6 @@ import {
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
 
-
 ChartJS.register(
   BarController,
   CategoryScale,
@@ -36,9 +35,7 @@ ChartJS.register(
 );
 
 const DailyScreen = () => {
-  const [selectedDate, setSelectedDate] = useState(
-    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-  );
+  const [selectedDate, setSelectedDate] = useState('2024-11-25');
   const [cgmData, setCgmData] = useState(new Array(96).fill(null));
   const [bolusData, setBolusData] = useState(new Array(96).fill(null));
   const [bolusDetails, setBolusDetails] = useState([]);
@@ -67,11 +64,15 @@ useEffect(() => {
 }, [selectedDate]);
 
   const fetchData = (date) => {
+
+  
+
     Promise.all([
         fetch(`https://3tansqzb2f.execute-api.us-east-1.amazonaws.com/default/api/cgm?date=${date}`).then((res) => res.json()),
         fetch(`https://3tansqzb2f.execute-api.us-east-1.amazonaws.com/default/api/bolus?date=${date}`).then((res) => res.json())
     ])
     .then(([cgmResponse, bolusResponse]) => {
+      
         // ✅ Process CGM Data
         const formattedCgmData = new Array(96).fill(null);
         cgmResponse.forEach(entry => {
@@ -94,19 +95,19 @@ useEffect(() => {
 
         // ✅ Now BOTH datasets are available before calling detectBgSpikes()
         setCgmData([...formattedCgmData]);
-        setBolusData([...formattedBolusData]);
-        detectBgSpikes(formattedCgmData, formattedBolusData);
+        //setBolusData([...formattedBolusData]);
+        detectBgSpikes(formattedCgmData);
         //detectLateBolus(formattedCgmData, formattedBolusData, spikeTimes);
-        //detectEarlyBolus(formattedCgmData, bolusData, spikeTimes);
-        //detectExpectedBolus(data, bolusData, spikeTimes);
-        //detectDoubleBolus(bolusData);
+        //detectEarlyBolus(formattedCgmData, formattedBolusData, spikeTimes);
+        //detectExpectedBolus(formattedCgmData, formattedBolusData);
+        //detectSupplementalBolus(formattedBolusData);
+      
         setSpikeAnnotations(annotations);
         eventMessages.time.sort((a, b) => a.time - b.time);
         
     })
     .catch(error => console.error("Error fetching data:", error));
 };
-
 
 const fetchDailyScores = async (date) => {
   try {
@@ -122,10 +123,8 @@ const fetchDailyScores = async (date) => {
   }
 };
 
-
 let events = [];
 let spikes = [];
-
 let lastLateBolusIndex = -6;
 let lastEarlyBolusIndex = -6;
 let newExpectedBolusBars = []; // Temporary array to hold bars before setting state
@@ -138,13 +137,11 @@ const [doubleBolusIndexes, setDoubleBolusIndexes] = useState({});
 const [eventMessages, setEventMessages] = useState([]);
 const [expectedBolusBars, setExpectedBolusBars] = useState([]);
 
-
 let spikeStart = null;
 let lastNoBolusIndex = -6;
 let spikeEnd = null;
 let annotations = [];
 let spikeTimes = [];
-
 
 useEffect(() => {
   setEarlyBolusIndexes(prevIndexes => ({ ...prevIndexes }));
@@ -153,21 +150,24 @@ useEffect(() => {
   setExpectedBolusBars([...newExpectedBolusBars]);
 }, []);  // ✅ FIX: Empty dependency array to run only once on mount
 
+const detectBgSpikes = (data) => {
+    clearEvents(); // Clear previous events before detecting new ones
+    let lastSpikeIndex = -6;
+    let inSpike = false;
+    let spikeAnnotations = [];
 
-
-const detectBgSpikes = (data, bolusData) => {
-  clearEvents(); // Clear previous events before detecting new ones
-  let lastSpikeIndex = -6;
-  let inSpike = false;
-  let spikeAnnotations = [];
-
-  for (let i = 0; i < data.length - numIntervalsForSpikeX; i++) {
-      if (data[i] !== null) {
+    for (let i = 0; i < data.length - numIntervalsForSpikeX; i++) {
+        if (data[i] !== null) {
           let spikeDetected = checkForBGSpike(data, i);
 
-          if (spikeDetected && (i - lastSpikeIndex >= numIntervalsForSpikeX)) {
+            if (spikeDetected && (i - lastSpikeIndex >= numIntervalsForSpikeX)) {
               let { formatted, militaryTime } = formatTime(i);
-              addEvent(militaryTime, `${formatted} - BG/Carb Increase. Spike detected.`, 'classYellowBold','This is normal after a meal or snack.');
+              addEvent(
+                militaryTime, 
+                `${formatted} - BG/Carb Increase. Spike detected.`, 
+                'classYellowBold',
+                'This is normal after a meal or snack.'
+              );
               
               lastSpikeIndex = i;
               let troughStart = findTroughStart(data, i);
@@ -180,55 +180,35 @@ const detectBgSpikes = (data, bolusData) => {
                   spikeStart = troughStart;
                   inSpike = true;
               }
-          }
+            }
 
-          if (inSpike && (!spikeDetected || i === data.length - 10)) {
-              spikeEnd = i;
-              annotations.push({
-                  type: "box",
-                  xMin: spikeStart,
-                  xMax: spikeEnd,
-                  backgroundColor: "rgba(255, 255, 0, 0.2)",
-                  borderWidth: 0,
-                  drawTime: "beforeDatasetsDraw",
+            if (inSpike && (!spikeDetected || i === data.length - 10)) {
+                spikeEnd = i;
+                annotations.push({
+                    type: "box",
+                    xMin: spikeStart+4,
+                    xMax: spikeEnd+3,
+                    backgroundColor: "rgba(255, 255, 0, 0.2)",
+                    borderWidth: 0,
+                    drawTime: "beforeDatasetsDraw",
               });
+              
               inSpike = false;
-          }
+         }
       }
-  }
+    }
+  };
 
-  detectLateBolus(data, bolusData, spikeTimes);
-  detectEarlyBolus(data, bolusData, spikeTimes);
+  /**
+  * **Helper Functions**
+  */
 
-    detectExpectedBolus(data, bolusData);
-
-  
-  detectSupplementalBolus(bolusData);
-
-};
-
-/**
-* **Helper Functions**
-*/
-
-// ✅ Helper Function: Get BG Value at a Specific Interval
-const getBgValueAtInterval = (data, i, interval) => {
-  return data[i + interval] !== null ? data[i + interval] : null;
-};
-
-// ✅ Helper Function: Calculate BG Increase Over Time
-const calculateBgIncrease = (initialValue, newValue) => {
-  return newValue !== null ? newValue - initialValue : 0;
-};
-
-
-
-
-let numIntervalsForSpikeX = 8; // 120 minutes (assuming 15-minute intervals)
-let numIntervalsForSpikeY = 4;  // 60 minutes (assuming 15-minute intervals)
-let spikeXIncreaseThreshold = 85;
-let spikeYIncreaseThreshold = 45;
-const checkForBGSpike = (data, i) => {  // ✅ Main Function: Check If a Spike Occurs
+ 
+  let numIntervalsForSpikeX = 8; // 120 minutes (assuming 15-minute intervals)
+  let numIntervalsForSpikeY = 4;  // 60 minutes (assuming 15-minute intervals)
+  let spikeXIncreaseThreshold = 85;
+  let spikeYIncreaseThreshold = 45;
+  const checkForBGSpike = (data, i) => {  // ✅ Main Function: Check If a Spike Occurs
   let newBgValueXminAhead = getBgValueAtInterval(data, i, numIntervalsForSpikeX); // ✅ Get BG value X min ahead
   let newBgValueYminAhead = getBgValueAtInterval(data, i, numIntervalsForSpikeY); // ✅ Get BG value Y min ahead
 
@@ -236,10 +216,8 @@ const checkForBGSpike = (data, i) => {  // ✅ Main Function: Check If a Spike O
   let bgIncreaseOverYmin = calculateBgIncrease(data[i], newBgValueYminAhead); // ✅ Compute BG increase over Y min
 
   // ✅ Returns TRUE if BG increases meet the threshold & new values are high
-  return (bgIncreaseOverXmin >= spikeXIncreaseThreshold || bgIncreaseOverYmin >= spikeYIncreaseThreshold) && (newBgValueXminAhead > 205 || newBgValueYminAhead > 220);
+return (bgIncreaseOverXmin >= spikeXIncreaseThreshold || bgIncreaseOverYmin >= spikeYIncreaseThreshold) && (newBgValueXminAhead > 205 || newBgValueYminAhead > 220);
 };
-
-
 
 // ✅ Finds lowest point before a spike (Trough)
 const findTroughStart = (data, i) => {
@@ -258,6 +236,17 @@ const findPeakEnd = (data, i) => {
   }
   return peakEnd;
 };
+
+ // ✅ Helper Function: Get BG Value at a Specific Interval
+ const getBgValueAtInterval = (data, i, interval) => {
+  return data[i + interval] !== null ? data[i + interval] : null;
+  };
+
+  // ✅ Helper Function: Calculate BG Increase Over Time
+  const calculateBgIncrease = (initialValue, newValue) => {
+  return newValue !== null ? newValue - initialValue : 0;
+  };
+
 
 const detectLateBolus = (data, bolusData, spikeTimes) => {
   let newLateBolusIndexes = { ...lateBolusIndexes }; // Copy existing late bolus indexes
@@ -372,9 +361,6 @@ const detectExpectedBolus = (data, bolusData) => {
   setExpectedBolusBars(newExpectedBolusBars);
 };
 
-
-
-
 const detectSupplementalBolus = (bolusData) => {
   let newSupplementalBolusIndexes = { ...supplementalBolusIndexes }; // Copy existing
 
@@ -399,8 +385,6 @@ const detectSupplementalBolus = (bolusData) => {
   setSupplementalBolusIndexes(newSupplementalBolusIndexes);
 };
 
-
-
 const addEvent = (time, description, className, details) => {
   setEventMessages(prevEvents => {
       // Prevent duplicate events
@@ -411,7 +395,6 @@ const addEvent = (time, description, className, details) => {
   });
 };
 
-
 const removeEvent = (time) => {
   setEventMessages(prevEvents => prevEvents.filter(event => event.time !== time));
 };
@@ -419,10 +402,6 @@ const removeEvent = (time) => {
 const clearEvents = () => {
   setEventMessages([]);
 };
-
-
-
-
 
 const formatTime = (index) => {
   let hours = Math.floor(index / 4);
@@ -437,7 +416,6 @@ const formatTime = (index) => {
   };
 };
 
-
 // 📊 Add Chart Annotations (Yellow for Spike, Orange for No Bolus)
 const addChartAnnotations = (start, end, bolusData) => {
   let annotations = [];
@@ -445,7 +423,7 @@ const addChartAnnotations = (start, end, bolusData) => {
   // Add Yellow Region (BG Spike)
   annotations.push({
       type: "box",
-      xMin: start + 1, // Start slightly after spike detection
+      xMin: start, // Start slightly after spike detection
       xMax: end,
       backgroundColor: "rgba(255, 255, 0, 0.2)", // Yellow for BG spike
       borderWidth: 0,
@@ -468,8 +446,6 @@ const addChartAnnotations = (start, end, bolusData) => {
   return annotations;
 };
 
-
-
 const updateDate = (days) => {
   const newDate = new Date(selectedDate);
   newDate.setDate(newDate.getDate() + days);
@@ -487,7 +463,22 @@ const updateDate = (days) => {
 };
 
 
-  const chartData = {
+const getBgPointColor = (context) => {
+  const index = context.dataIndex;
+  
+  // ✅ Check if the index falls within any spike range
+  for (let spike of spikeAnnotations) {
+      if (index >= spike.xMin && index <= spike.xMax) {
+          return "rgba(255, 0, 0, 1)"; // 🔴 Red for BG points within spike range
+      }
+  }
+  //"rgb(203, 245, 245)"
+  return "rgb(75, 192, 192)"; // Default color for BG points
+};
+
+
+
+const chartData = {
     labels: Array.from({ length: 96 }, (_, i) =>
       `${Math.floor(i / 4)}:${((i % 4) * 15).toString().padStart(2, "0")}`
     ),
@@ -498,8 +489,8 @@ const updateDate = (days) => {
         borderColor: "rgb(75, 192, 192)",
         backgroundColor: "rgba(187, 255, 255, 0.2)",
         pointRadius: 4,
-        pointBackgroundColor: "rgb(203, 245, 245)",
-        fill: true,
+        pointBackgroundColor: (context) => getBgPointColor(context), // ✅ Apply dynamic color function
+            fill: true,
       },
       {
         label: "Bolus Insulin Delivered",
@@ -525,13 +516,9 @@ const updateDate = (days) => {
       categoryPercentage: 1.2,
   },
     ],
-  };
+};
 
-
-
-
-
-  const updateTooltipForBolus = (tooltipItem) => {
+const updateTooltipForBolus = (tooltipItem) => {
     const index = tooltipItem.dataIndex;
     const dataset = tooltipItem.dataset.label;
 
@@ -576,8 +563,6 @@ const getBolusBarColor = (context) => {
   return "rgba(255, 99, 132, 0.8)"; // Default color
 };
 
-
-
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -618,19 +603,22 @@ const getBolusBarColor = (context) => {
     <div className="dailyChartHead" align="center">
       <Card>
         <CardContent>
-        
-          <h3 className="text-xl font-semibold">Daily Blood Glucose Data</h3>
           <Scoreboard dailyScore={dailyScore} />
-          <div align="center">
-            <Button onClick={() => updateDate(-1)} className="dateSelect">← Back</Button>
-            <input
+          <table border={0} cellPadding={1}>
+            <tr>
+              <td className="btnDateSelect"><Button className="btnDateSelect" onClick={() => updateDate(-1)}>← Back</Button></td>
+              <td className="btnDateSelect">&nbsp;</td>
+              <td><input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="dateSelect"
-            />
-            <Button onClick={() => updateDate(1)} className="dateSelect">Next →</Button>
-          </div>
+            /></td>
+              <td className="btnDateSelect">&nbsp;</td>
+              <td><Button className="btnDateSelect" onClick={() => updateDate(1)}>Next →</Button></td>
+            </tr>
+          </table>
+          <h3 className="text-xl font-semibold">Daily Blood Glucose Data</h3>
           <div style={{ height: "400px", width: "99%" }}>
             <Line data={chartData} options={chartOptions} />
           </div>
