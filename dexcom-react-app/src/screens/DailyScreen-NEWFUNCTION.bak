@@ -37,10 +37,10 @@ ChartJS.register(
 const DailyScreen = () => {
   const [majorEventsList,setMajorEvents] = useState([]);
   //let majorEventsList = [];
-  const [selectedDate, setSelectedDate] = useState('2024-11-22');
+  const [selectedDate, setSelectedDate] = useState('2025-01-20');
   const [cgmData, setCgmData] = useState(new Array(96).fill(null));
   const [bolusData, setBolusData] = useState(new Array(96).fill(null));
-  let [bolusDetails, setBolusDetails] = useState([]);
+  const [bolusDetails, setBolusDetails] = useState([]);
   const [scoreData, setScoreData] = useState({
     totalPoints: 55,
     pointsEarnedToday: 0,
@@ -49,7 +49,6 @@ const DailyScreen = () => {
     positiveEvents: 0,
   });
 
-  const markedBolus = [];
   const [spikeAnnotations, setSpikeAnnotations] = useState([]);
   const [dailyScore, setDailyScore] = useState(null);
 
@@ -96,37 +95,20 @@ let dataRequested = false;
             const timestamp = new Date(Date.parse(entry["Timestamp"]));
             const index = timestamp.getHours() * 4 + Math.floor(timestamp.getMinutes() / 15);
             if (index >= 0 && index < 96) {
-                formattedBolusData[index] = entry["Insulin Delivered"];
+                formattedBolusData[index] = entry;
             }
         });
-
-        bolusResponse.forEach(entry => {
-          const timestamp = new Date(Date.parse(entry["Timestamp"]));
-          const index = timestamp.getHours() * 4 + Math.floor(timestamp.getMinutes() / 15);
-          if (index >= 0 && index < 96) {
-              //formattedBolusData[index] = entry["Insulin Delivered"];
-              bolusDetails[index] = entry;
-          }
-      });
-        
 
         // ✅ Now BOTH datasets are available before calling detectBgSpikes()
         setCgmData([...formattedCgmData]);
         setBolusData([...formattedBolusData]);
         detectBgSpikes(formattedCgmData);
-        
-        detectEarlyBolus(formattedCgmData, formattedBolusData, spikeTimes);
         detectCorrectionBolus(formattedCgmData, formattedBolusData, spikeTimes);
+        detectEarlyBolus(formattedCgmData, formattedBolusData, spikeTimes);
         
         detectExpectedBolus(formattedCgmData, formattedBolusData);
-        detectSupplementalBolus(formattedBolusData);
+        //detectSupplementalBolus(formattedBolusData);
         setMajorEvents(majorEventsList);
-        
-        majorEventsList.sort((a, b) => {
-          return parseTime(a[1]) - parseTime(b[1]);
-        });
-        
-        console.log(majorEventsList);
         
         
     })
@@ -160,6 +142,8 @@ const [earlyBolusIndexes, setEarlyBolusIndexes] = useState({});
 const [supplementalBolusIndexes, setSupplementalBolusIndexes] = useState({});
 const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
 const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
+const [doubleBolusIndexes, setDoubleBolusIndexes] = useState({});
+const [eventMessages, setEventMessages] = useState([]);
 const [expectedBolusBars, setExpectedBolusBars] = useState([]);
 
 let spikeStart = null;
@@ -171,12 +155,12 @@ let spikeTimes = [];
 useEffect(() => {
   setEarlyBolusIndexes(prevIndexes => ({ ...prevIndexes }));
   setCorrectionBolusIndexes(prevIndexes => ({ ...prevIndexes }));
-  setSupplementalBolusIndexes(prevIndexes => ({ ...prevIndexes }));
+  setDoubleBolusIndexes(prevIndexes => ({ ...prevIndexes }));
   setExpectedBolusBars([...newExpectedBolusBars]);
 }, []);  // ✅ FIX: Empty dependency array to run only once on mount
 
-let numIntervalsForSpikeA = 3; // 120 minutes (assuming 15-minute intervals)
-let spikeIncreaseThresholdA = 50;
+let numIntervalsForSpikeA = 4; // 120 minutes (assuming 15-minute intervals)
+let spikeIncreaseThresholdA = 65;
 
 let numIntervalsForSpikeB = 2;  // 60 minutes (assuming 15-minute intervals)
 let spikeIncreaseThresholdB = 65;
@@ -193,7 +177,7 @@ let spikeIncreaseThresholdB = 65;
    //&& bgIncreaseOverYmin >= spikeIncreaseThresholdB
     ) 
     {
-      //return true;
+      return true;
         if (newBgValueXminAhead > 205 
           || newBgValueYminAhead > 220
         ){
@@ -217,6 +201,7 @@ let spikeIncreaseThresholdB = 65;
   let spikeDetected = false;
 
 const detectBgSpikes = (data) => {
+    clearEvents(); // Clear previous events before detecting new ones
     
     let lastSpikeIndex = -6;
     let inSpike = false;
@@ -231,6 +216,7 @@ const detectBgSpikes = (data) => {
             if (spikeDetected && (i - lastSpikeIndex >= 6)) {
               let { formatted, militaryTime } = formatTime(i);
               
+              //eventMessages.time.sort((a, b) => a.time - b.time);
               lastSpikeIndex = i;
               troughStart = findTroughStart(data, i);
               peakEnd = findPeakEnd(data, i);
@@ -240,16 +226,23 @@ const detectBgSpikes = (data) => {
                 let spikePeakBG = getBgValueAtInterval(data,peakEnd,2);
                 let spikeRange = spikePeakBG - getBgValueAtInterval(data,troughStart,0);
                 spikeTimes.push([troughStart,spikePeakBG]); // Store spike start time
+
+                addEvent(
+                  militaryTime, 
+                  `${formatted} - Carb Increase (spike) detected`, 
+                  'classYellowBold',
+                  
+                );
               }
 
-              majorEventsList[majorEventsList.length] = [
-                "Spike",   //Carb Increase (spike) detected
-                ("🚀 " +  formatted),
+              majorEventsList[i] = [
+                "Carb Increase (spike) detected",
+                (" 🕒 " +  formatted),
                 'This is normal after a meal or snack.',
-                'classYellowBold',
-                i,
-                " Carb Increase (spike) detected"
+                'classYellowBold'
               ];
+
+              
 
               if (!inSpike) {
                   spikeStart = troughStart;
@@ -287,7 +280,7 @@ const findTroughStart = (data, i) => {
     
     if (
       (data[troughStart - 1] - data[troughStart] <= -1) 
-      && (data[troughStart - 2] <= data[troughStart])
+      && (data[troughStart - 4] <= data[troughStart])
       
     ){
       troughStart--;
@@ -321,53 +314,7 @@ const findPeakEnd = (data, i) => {
 };
 
 
-function parseTime(timeStr) {
-  // Use a regex to match a time in the format "9:30 a.m." (ignoring the emoji and extra spaces)
-  const regex = /(\d{1,2}):(\d{2})\s*([ap])\.?m\.?/i;
-  const match = timeStr.match(regex);
-  
-  if (match) {
-    let hours = parseInt(match[1], 10);
-    const minutes = parseInt(match[2], 10);
-    const period = match[3].toLowerCase();
 
-    // Convert to 24-hour format:
-    if (period === 'p' && hours < 12) hours += 12;
-    if (period === 'a' && hours === 12) hours = 0;
-    
-    return hours * 60 + minutes; // minutes since midnight
-  }
-  return 0; // fallback if parsing fails
-}
-
-
-const getNearestSpikeTime = (data,i) => {
-  let _absV = 0;
-  let _finalV = 50;
-  let _finalIndex = 1;
-  //return spikeTimes.find(spike => i - spike[0] > 0 && i - spike[0] <= 8); 
-  for (let j = 0; j < spikeTimes.length; j++) {
-    _absV = Math.abs(spikeTimes[j][0]-i);
-      if (_absV < _finalV){
-        _finalV = _absV;
-        _finalIndex = j;
-      }
-  }
-  if (spikeTimes[_finalIndex-1]!=null){
-    if (i - (spikeTimes[_finalIndex-1][0]) <7) {
-      _finalIndex = _finalIndex-1;
-    }
-  }
-
-  if (data[i]>250){
-    return spikeTimes[_finalIndex-1];
-  }
-
-  if (_finalV > 10)
-    return undefined;
-
-  return spikeTimes[_finalIndex];
-}
 
 
 
@@ -377,50 +324,36 @@ const detectCorrectionBolus = (data, bolusData, spikeTimes) => {
   for (let i = 0; i < bolusData.length; i++) {
       
       // ✅ Ensure at least 10 minutes since last detected bolus
-      if (bolusData[i] !== null) { // && (i - lastCorrectionBolusIndex >= 10)
-          if (markedBolus[i] == undefined){
-            // ✅ Check if bolus falls within 195 min after a spike
-          let spikeStart = getNearestSpikeTime(data,i);
-
-          if (spikeStart !== undefined) { // ✅ If valid spike found
-              if (spikeStart[0]<=i){
+      if (bolusData[i] !==null){
+        if (bolusData[i]["Initial Delivery"] != 'DETECTED') { // && (i - lastCorrectionBolusIndex >= 10)
+          
+          // ✅ Check if bolus falls within 195 min after a spike
+            let spikeStart = spikeTimes.find(spike => i - spike[0] > 0 && i - spike[0] <= 10); 
+  
+            if (spikeStart !== undefined) { // ✅ If valid spike found
                 let { formatted: correctionBolusFormatted, militaryTime: correctionBolusMilitary } = formatTime(i);
+                let _correctionBolusMessage = "Heads up! Administering your bolus correction after the ideal time can lead to higher post-meal blood sugar ";
+                _correctionBolusMessage += "levels. Aim for a more timely dose with accurately estimated carbs in order to improve control.\n(–15 points!)";
                 
-                let _correctionBolusMessage="Insulin Delivered: " + bolusDetails[i]["Insulin Delivered"] + " units\n";
-                _correctionBolusMessage+="Blood Glucose Input: " + bolusDetails[i]["Blood Glucose Input"] + " mg/dl\n";
-                _correctionBolusMessage+="Carbs Input: " + bolusDetails[i]["Carbs Input"] + " g\n";
-                _correctionBolusMessage+="Carbs Ratio: " + bolusDetails[i]["Carbs Ratio"] + " g\nㅤ\n";
-                _correctionBolusMessage += " ⚠️ Heads up! Administering your bolus correction after the ideal time can ";
-                _correctionBolusMessage += "lead to higher post-meal blood sugar levels. Aim for a more timely dose with ";
-                _correctionBolusMessage += "accurately estimated carbs in order to improve control.\n";
+                if (spikeStart[1]>150)
+                  _correctionBolusMessage+="\nㅤ\n ⚠️ Analysis:\nBG increased close to " + spikeStart[1] + ", even after the bolus. It sounds like you might have under-estimated the amount of carbs for this meal. "
                 
-                if (spikeStart[1]>200){
-                  _correctionBolusMessage+="\nㅤ\n 📊 Analysis:\nBG increased close to " + spikeStart[1] + ", even after the ";
-                  _correctionBolusMessage+="bolus. It sounds like you may have under-estimated the amount of carbs for this meal, ";
-                  _correctionBolusMessage+="or did not provide enough time for the bolus to kick-in before eating.";
-                }
+                
                 // ✅ Store this bolus in the state to prevent duplicates
                 newCorrectionBolusIndexes[i] = correctionBolusFormatted;
                 lastCorrectionBolusIndex = i; // ✅ Update last bolus index
-                
-                majorEventsList[majorEventsList.length] = [
-                  "correction",
+                bolusData[i]["Initial Delivery"] = 'DETECTED';
+                majorEventsList[i] = [
+                  "Correction Bolus Detected",
                   (" 🕒 " +  correctionBolusFormatted),
                   _correctionBolusMessage,
-                  'classRedBold',
-                  i,
-                  "Correction Detected: (–5 points)"
+                  'classRedBold'
                 ];
-
-                markedBolus[i] = 'Marked'
-
-              }
-            
-          }
-      
-              
-          }
+  
+            }
+        }
       }
+      
   }
   setCorrectionBolusIndexes(newCorrectionBolusIndexes); // ✅ Update state with detected correction boluses
 };
@@ -429,58 +362,50 @@ const detectEarlyBolus = (data, bolusData, spikeTimes) => {
   let updatedIndexes = { ...earlyBolusIndexes }; // Copy existing early bolus indexes
 
   for (let i = 0; i < bolusData.length; i++) {
-      if (bolusData[i] !== null) { // ✅ Ensure at least 8 minutes since last early bolus
-          let spikeStart = getNearestSpikeTime(data,i); // ✅ Check if bolus was 5-25 min before spike
-          let { formatted: earlyBolusFormatted, militaryTime: earlyBolusMilitary } = formatTime(i);
-          let _earlyBolusMessage = "";
-          if (spikeStart !== undefined) { // ✅ If valid early bolus found
-            if (spikeStart[0]>=i-1){
-              _earlyBolusMessage+="Insulin Delivered: " + bolusDetails[i]["Insulin Delivered"] + " units\n";
-              _earlyBolusMessage+="Blood Glucose Input: " + bolusDetails[i]["Blood Glucose Input"] + " mg/dl\n";
-              _earlyBolusMessage+="Carbs Input: " + bolusDetails[i]["Carbs Input"] + " g\n";
-              _earlyBolusMessage+="Carbs Ratio: " + bolusDetails[i]["Carbs Ratio"] + " g\nㅤ\n";
-              _earlyBolusMessage+= " ✅ Nice work! Being aware of upcoming meal intake and proactively providing a ";
-              _earlyBolusMessage+="proportional bolus helps to keep the spikes down to a minimum.";
+    if (bolusData[i] !==null){
+      if ((bolusData[i]["Initial Delivery"] != 'DETECTED') && (i - lastEarlyBolusIndex >= 8)) { // ✅ Ensure at least 8 minutes since last early bolus
+        let spikeStart = spikeTimes.find(spike => (spike[0] - i >= 0 && spike[0] - i <= 7)); // ✅ Check if bolus was 5-25 min before spike
 
-              if (spikeStart[1]>150){
-                _earlyBolusMessage+="\nㅤ\n ⚠️ Analysis:\nBG increased close to " + spikeStart[1] + ", even after the ";
-                _earlyBolusMessage+="bolus. It sounds like you may have under-estimated the amount of carbs for this meal, ";
-                _earlyBolusMessage+="or did not provide enough time for the bolus to kick-in before eating.";
-              }
-              // ✅ Store this bolus in the state to prevent duplicates
-              updatedIndexes[i] = ["🟢 Early Bolus Detected",earlyBolusFormatted];
-              lastEarlyBolusIndex = i; // ✅ Update last early bolus index
-              majorEventsList[majorEventsList.length] = [
-                "early", 
-                (" 🏆  " + earlyBolusFormatted),
-                _earlyBolusMessage,
-                'classGreenBold',
-                i,
-                "Bolus Detected: (+20 points!)"
-              ];
+        if (spikeStart !== undefined) { // ✅ If valid early bolus found
+            let { formatted: earlyBolusFormatted, militaryTime: earlyBolusMilitary } = formatTime(i);
+            let _earlyBolusMessage = "Nice work! Being aware of upcoming meal intake and proactively providing a ";
+            _earlyBolusMessage+="proportional bolus helps to keep the spikes down to a minimum.\n(+20 points!)";
 
-              markedBolus[i] = 'Marked'
+            if (spikeStart[1]>150)
+              _earlyBolusMessage+="\nㅤ\n 🟢 Analysis:\nBG increased close to " + spikeStart[1] + ", even after the bolus. It sounds like you might have under-estimated the amount of carbs for this meal. "
+            
+            // ✅ Store this bolus in the state to prevent duplicates
+            updatedIndexes[i] = ["🟢 Early Bolus Detected",earlyBolusFormatted];
+            lastEarlyBolusIndex = i; // ✅ Update last early bolus index
+            bolusData[i]["Initial Delivery"] = 'DETECTED';
 
-            }
-              
-              //✅   🕒
-          }
+            majorEventsList[i] = [
+              "Meal Bolus Detected", 
+              (" 🕒 " + earlyBolusFormatted),
+              _earlyBolusMessage,
+              'classGreenBold'
+            ];
+
+                      
+        }
       }
+    }  
+    
   }
   setEarlyBolusIndexes(updatedIndexes); // ✅ Update state with detected early boluses
 };
 
-const detectExpectedBolus = (data,bolusData) => {
+const detectExpectedBolus = (data, bolusData) => {
   let highBgStart = null;
   
 
   for (let i = 0; i < data.length; i++) {
-      if (data[i] !== null && data[i] > 250) { 
+      if (data[i] !== null && data[i] > 200) { 
           if (highBgStart === null) {
               highBgStart = i; 
           }
 
-          if (i - highBgStart >= 12) {  
+          if (i - highBgStart >= 6) {  
               let noBolusDetected = !bolusData.slice(highBgStart, i).some(bolus => bolus !== null);
 
               if (noBolusDetected) { 
@@ -490,23 +415,30 @@ const detectExpectedBolus = (data,bolusData) => {
                   while (
                       expectedBolusEnd < data.length &&
                       data[expectedBolusEnd] !== null &&
-                      data[expectedBolusEnd] > 250 
+                      data[expectedBolusEnd] > 200 
                       //&& bolusData[expectedBolusEnd] === null
-                  ) { expectedBolusEnd++; }
+                  ) {
+                      expectedBolusEnd++;
+                  }
 
                   let expectedBolusCenter = Math.floor((expectedBolusStart + expectedBolusEnd) / 2);
 
                   let { formatted: expectedBolusFormatted, militaryTime: expectedBolusMilitary } = formatTime(expectedBolusCenter);
                   let _expectedBolusMessage = "Attention! Missing your scheduled bolus might cause your blood sugar to spike, or cause you to remain at elevated glucose levels. "
                   _expectedBolusMessage += "Remember to dose on time for better overall management.\n(–25 points!)";
-                  
-                  majorEventsList[majorEventsList.length] = [
-                    "expected", 
-                    (" ⚠️ " + expectedBolusFormatted),
-                    _expectedBolusMessage,
+
+                  addEvent(
+                    expectedBolusMilitary,
+                    `${expectedBolusFormatted} - Expected bolus (BG > 200 for 120 min).`,
                     'classOrangeBold',
-                    i,
-                    "Bolus Recommended (-5 points)"
+                    _expectedBolusMessage
+                  );
+
+                  majorEventsList[i] = [
+                    "Expected Bolus Detected", 
+                    (" 🕒 " + expectedBolusFormatted),
+                    _expectedBolusMessage,
+                    'classOrangeBold'
                   ];
 
                   // ✅ Store expected bolus bar data
@@ -529,55 +461,45 @@ const detectExpectedBolus = (data,bolusData) => {
 
 const detectSupplementalBolus = (bolusData) => {
   let newSupplementalBolusIndexes = { ...supplementalBolusIndexes }; // Copy existing
-  console.log('detecting supplementals');
+
   for (let i = 0; i < bolusData.length; i++) {
       if (bolusData[i] !== null) {
           // ✅ If bolus is NOT classified as Early, Correction, or Expected
-         
+          if (
+              !earlyBolusIndexes.hasOwnProperty(i) &&
+              !correctionBolusIndexes.hasOwnProperty(i) &&
+              !expectedBolusIndexes.hasOwnProperty(i)
+          ) {
+              let { formatted: supplementalBolusFormatted, militaryTime: supplementalBolusMilitary } = formatTime(i);
+              let _supplementalBolusMessage = "Great job staying on top of things! \nA timely correction bolus helps bring your blood sugar ";
+              _supplementalBolusMessage += "back into the target range. Keep monitoring your levels for continued success.\n(+10 points!)";
 
-        let bolusDetected = bolusData.slice(i-3, i).some(bolus => bolus !== null);
-
-        if (bolusDetected){
-          let { formatted: supplementalBolusFormatted, militaryTime: supplementalBolusMilitary } = formatTime(i);
-          
-          let _supplementalBolusMessage="Insulin Delivered: " + bolusDetails[i]["Insulin Delivered"] + " units\n";
-          _supplementalBolusMessage+="Blood Glucose Input: " + bolusDetails[i]["Blood Glucose Input"] + " mg/dl\n";
-          _supplementalBolusMessage+="Carbs Input: " + bolusDetails[i]["Carbs Input"] + " g\n";
-          _supplementalBolusMessage+="Carbs Ratio: " + bolusDetails[i]["Carbs Ratio"] + " g\nㅤ\n";
-           _supplementalBolusMessage += "Great job staying on top of things! It's important to work toward your target range ";
-          
-          _supplementalBolusMessage += "but be careful not to take your doses too close together.\n(+10 points!)";
-          
-          _supplementalBolusMessage += "\nㅤ\n ⚠️ Analysis:\nInsulin stacking occurs when multiple doses of insulin are taken ";
-          _supplementalBolusMessage += "too close together before the previous dose has fully acted, leading to an increased risk ";
-          _supplementalBolusMessage += "of hypoglycemia (low blood sugar). This typically happens with bolus (mealtime) ";
-          _supplementalBolusMessage += "insulin when someone takes additional correction doses before their ";
-          _supplementalBolusMessage += "prior dose has peaked or fully lowered blood glucose.";
-
-          for (let k = 0; k < majorEventsList.length; k++) {
-            if (majorEventsList[k][4] == i){
-
-              majorEventsList[k] = [
-                "supplemental", 
-                (" ⚠️ " + supplementalBolusFormatted),
-                _supplementalBolusMessage,
-                'classOrangeBold',
-                i,
-                "Extra Bolus (-5 points)"
-              ];
-            }
+              // ✅ Store in event list and highlight in UI
+              addEvent(supplementalBolusFormatted, `${supplementalBolusFormatted} - Supplemental Bolus detected.`,'classGreenBold',_supplementalBolusMessage);
+              newSupplementalBolusIndexes[i] = supplementalBolusFormatted;
           }
-
-          newSupplementalBolusIndexes[i] = supplementalBolusFormatted;
-        }
-      
       }
   }
   setSupplementalBolusIndexes(newSupplementalBolusIndexes);
-setMajorEvents(majorEventsList);
 };
 
+const addEvent = (time, description, className, details) => {
+  setEventMessages(prevEvents => {
+      // Prevent duplicate events
+      if (!prevEvents.some(event => event.time === time && event.description === description)) {
+          return [...prevEvents, { time, description, className, details }];
+      }
+      return prevEvents; // Return existing events if duplicate is found
+  });
+};
 
+const removeEvent = (time) => {
+  setEventMessages(prevEvents => prevEvents.filter(event => event.time !== time));
+};
+
+const clearEvents = () => {
+  setEventMessages([]);
+};
 
 const formatTime = (index) => {
   let hours = Math.floor(index / 4);
@@ -593,7 +515,7 @@ const formatTime = (index) => {
 };
 
 // 📊 Add Chart Annotations (Yellow for Spike, Orange for No Bolus)
-const addChartAnnotations = (start, end) => {
+const addChartAnnotations = (start, end, bolusData) => {
   let annotations = [];
 
   // Add Yellow Region (BG Spike)
@@ -628,10 +550,14 @@ const updateDate = (days) => {
   setSelectedDate(newDate.toISOString().split("T")[0]);
 
   // ✅ Clear existing events before fetching new data
+  clearEvents(); 
   setMajorEvents([]); 
 
   // Reset the accordion
   setExpandedIndex(null);
+
+  // ✅ Fetch new data and detect events
+  //fetchData(newDate.toISOString().split("T")[0]);
 
 };
 
@@ -695,46 +621,20 @@ const updateTooltipForBolus = (tooltipItem) => {
     const index = tooltipItem.dataIndex;
     const dataset = tooltipItem.dataset.label;
     if (dataset === "Bolus Insulin Delivered") {
-      let tooltipMessages = [];
-   
-      //if (correctionBolusIndexes.hasOwnProperty(index)) {
-
-        for (let n = 0; n < majorEventsList.length; n++) {
-          if ((majorEventsList[n][4] == index) && (majorEventsList[n][0].indexOf("Spike") < 0)){
-            tooltipMessages.push(`${majorEventsList[n][2]}`);
-            return tooltipMessages.length > 0 ? tooltipMessages.join("\n") : tooltipItem.formattedValue;
-          }
-        }
+        let tooltipMessages = [];
         
-      //} 
-      
-      //if (earlyBolusIndexes.hasOwnProperty(index)) {
-        
-        for (let n = 0; n < majorEventsList.length; n++) {
-          if ((majorEventsList[n][4] == index) && (majorEventsList[n][0] == "early")){
-            tooltipMessages.push(`${majorEventsList[n][2]}`);
-            return tooltipMessages.length > 0 ? tooltipMessages.join("\n") : tooltipItem.formattedValue;
-          }
+        if (doubleBolusIndexes.hasOwnProperty(index)) {
+            tooltipMessages.push(`Additional Bolus Detected at ${doubleBolusIndexes[index]}`);
+        } else if (correctionBolusIndexes.hasOwnProperty(index)) {
+          tooltipMessages.push(`${majorEventsList[index][2]}`);
+        } else if (earlyBolusIndexes.hasOwnProperty(index)) {
+            tooltipMessages.push(`${majorEventsList[index][2]}`);
         }
-
+        else if (supplementalBolusIndexes.hasOwnProperty(index)) {
+          tooltipMessages.push(`Supplemental Bolus Detected at ${supplementalBolusIndexes[index]}`);
+      }
         
-        //else
-          // tooltipMessages.push(`Bolus Detected....`);
-      //}
-      
-      //if (supplementalBolusIndexes.hasOwnProperty(index)) {
-
-        for (let n = 0; n < majorEventsList.length; n++) {
-          if ((majorEventsList[n][4] == index) && (majorEventsList[n][0] == "supplemental")){
-            tooltipMessages.push(`${majorEventsList[n][2]}`);
-            return tooltipMessages.length > 0 ? tooltipMessages.join("\n") : tooltipItem.formattedValue;
-          }
-        }
-
-        //tooltipMessages.push(`Supplemental Bolus Detected at ${supplementalBolusIndexes[index]}`);
-      //}
-      
-      
+        return tooltipMessages.length > 0 ? tooltipMessages.join("\n") : tooltipItem.formattedValue;
 
     }
 
@@ -749,25 +649,15 @@ const updateTooltipForBolus = (tooltipItem) => {
 
 const getBolusBarColor = (context) => {
   const index = context.dataIndex;
-
-  for (let n = 0; n < majorEventsList.length; n++) {
-    if ((majorEventsList[n][4] === index) && (majorEventsList[n][0] == "correction")){
+  if (doubleBolusIndexes.hasOwnProperty(index)) {
+      return "rgba(255, 215, 0, 0.8)"; // 🟡 Yellow for Additional Bolus
+  }
+  if (correctionBolusIndexes.hasOwnProperty(index)) {
       return "rgba(255, 0, 0, 0.8)"; // 🔴 Red for Correction Bolus
-    }
   }
-
-  for (let n = 0; n < majorEventsList.length; n++) {
-    if ((majorEventsList[n][4] === index) && (majorEventsList[n][0] == "early")){
-      return "rgba(29, 114, 0, 0.8)"; // 🟢 Green for Early & Supplemental Bolus
-    }
+  if (earlyBolusIndexes.hasOwnProperty(index) || supplementalBolusIndexes.hasOwnProperty(index)) {
+      return "rgba(75, 192, 75, 0.8)"; // 🟢 Green for Early & Supplemental Bolus
   }
-
-  for (let n = 0; n < majorEventsList.length; n++) {
-    if ((majorEventsList[n][4] === index) && (majorEventsList[n][0] == "supplemental")){
-      return "rgba(255, 168, 27, 0.8)"; // 🔴 Red for Correction Bolus
-    }
-  }
-
   return "rgba(99, 239, 255, 0.8)"; // Default color
 };
 
@@ -785,32 +675,25 @@ const getBolusBarColor = (context) => {
             callbacks: {
                 title: (tooltipItems) => {
                   let _thisIndex = tooltipItems[0].dataIndex;
-                  for (let n = 0; n < majorEventsList.length; n++) {
-                    if ((majorEventsList[n][4] == _thisIndex) && (majorEventsList[n][0].indexOf("Spike") < 0)){
-                        return `${majorEventsList[n][1]} ${majorEventsList[n][5]}`; // Change the title
-                      
-                      //tooltipMessages.push(`${majorEventsList[n][2]}`);
-                      break;
-                    }
+                  if (majorEventsList[_thisIndex]!=null) {
+                    return `${majorEventsList[_thisIndex][1]} - ${majorEventsList[_thisIndex][0]}`; // Change the title
                   }
-                  
+
                   return tooltipItems[0].label;
                 },
                 label: (tooltipItem) => {
                     let label = updateTooltipForBolus(tooltipItem);
-                    return label.match(/(.{1,45})(\s|$)/g, "$1\n"); // Wrap text every 30 characters
+                    return label.match(/(.{1,60})(\s|$)/g, "$1\n"); // Wrap text every 30 characters
                     //return label.match(/.{1,60}/g);
                 }
             },
-            backgroundColor: "rgba(106, 122, 106, 0.95)",
             displayColors: false, // Hide color boxes to save space
+            bodyFont: { size: 12 }, // Adjust font size for better wrapping
             enabled: true,
             usePointStyle: true,
-            bodyFont: { size: 15, weight: "normal" },  // Adjust font style
-            titleFont: { size: 16, weight: "bold" }, 
-            useHTML: 1,
-            bodySpacing: 1, // Increase spacing between lines
-            yAlign: "top", // Prevents tooltip from going off-screen
+            bodyFont: { size: 16, weight: "normal" },  // Adjust font style
+            titleFont: { size: 18, weight: "bold" }, 
+            useHTML: true,
         },
         
         annotation: {
@@ -865,7 +748,7 @@ const getBolusBarColor = (context) => {
           
 
           {majorEventsList.length > 0 ? (
-            <table border={0} height={1} cellPadding={0} cellSpacing={0} className="events_table">
+            <table border={0} height={1} cellPadding={0} cellSpacing={0} className="results_table">
               <tbody>
 
                 
@@ -876,47 +759,7 @@ const getBolusBarColor = (context) => {
                       
                     <React.Fragment key={index}>
                       <tr>
-                      
-                        <td style={{
-                              verticalAlign:"top",
-                              padding:5
-                              
-                            }}>
-                          
-                         <a className="events_table" onClick={() => toggleAccordion(index)} style={{ cursor: "pointer",  }}
-                          ><div>{msg[1]} - {msg[5]}</div>
-                                                        
-                            {expandedIndex === index && (
-                            
-                            <div className="events_detail accordion-content " 
-                              dangerouslySetInnerHTML={{ __html: msg[2].replace(/\n/g, '<br />') }}>
-                            </div>
-                             
-                           )}
-                          </a>
-                          
-                        </td>
-                      </tr>
-                      
-                    </React.Fragment>
-                  ))}
-              </tbody>
-            </table>
-          ) : (
-            <p>No significant events detected today.</p>
-          )}
-
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default DailyScreen;
-
-
-/*
-<td 
+                      <td 
                           style={{
                             verticalAlign:"top",
                             padding:1,
@@ -935,5 +778,43 @@ export default DailyScreen;
 
                               </a>
                         </td>
+                        <td style={{
+                              verticalAlign:"top",
+                              padding:5
+                              
+                            }}>
+                          
+                         <a onClick={() => toggleAccordion(index)} style={{ cursor: "pointer",  }}
+                          ><div>{msg[1]} - {msg[0]}</div>
+                                                        
+                            {expandedIndex === index && (
+                            
+                            <div className="events_table accordion-content " dangerouslySetInnerHTML={{ __html: msg[2].replace(/\n/g, '<br />') }}
+                          >
+                               </div>
+                             
+                           )}
+                          </a>
+                          
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={2}>
+                          
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  ))}
+              </tbody>
+            </table>
+          ) : (
+            <p>No significant events detected today.</p>
+          )}
 
-*/
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default DailyScreen;
