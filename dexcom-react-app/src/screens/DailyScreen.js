@@ -36,8 +36,12 @@ ChartJS.register(
 
 const DailyScreen = () => {
   const [majorEventsList,setMajorEvents] = useState([]);
-  //let majorEventsList = [];
-  const [selectedDate, setSelectedDate] = useState('2024-11-22');
+const [earlyBolusIndexes, setEarlyBolusIndexes] = useState({});
+const [supplementalBolusIndexes, setSupplementalBolusIndexes] = useState({});
+const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
+const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
+const [expectedBolusBars, setExpectedBolusBars] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('2024-12-22');
   const [cgmData, setCgmData] = useState(new Array(96).fill(null));
   const [bolusData, setBolusData] = useState(new Array(96).fill(null));
   let [bolusDetails, setBolusDetails] = useState([]);
@@ -52,6 +56,51 @@ const DailyScreen = () => {
   const markedBolus = [];
   const [spikeAnnotations, setSpikeAnnotations] = useState([]);
   const [dailyScore, setDailyScore] = useState(null);
+ // New state for modal popup
+ const [showModal, setShowModal] = useState(false);
+ const [modalContent, setModalContent] = useState("");
+
+
+ const handleDailyAIClick = async () => {
+  // Build a pipe-delimited string from majorEventsList.
+  const pipeDelimited = majorEventsList
+    .map((event) => event.join("|"))
+    .join(" | ");
+  try {
+    const response = await fetch("http://localhost:3001/ask-gpt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: pipeDelimited }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch AI summary");
+    }
+
+    // Open the modal immediately
+    setShowModal(true);
+    setModalContent(""); // Reset modal content
+
+    // Set up the reader and decoder for streaming
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let done = false;
+    let content = "";
+
+    // Loop through the stream and update the modal content
+    while (!done) {
+      const { value, done: doneReading } = await reader.read();
+      done = doneReading;
+      const chunk = decoder.decode(value || new Uint8Array());
+      content += chunk;
+      setModalContent(content);
+    }
+  } catch (error) {
+    console.error(error);
+    setModalContent("Error fetching summary.");
+    setShowModal(true);
+  }
+};
+
 
   useEffect(() => {
     fetchData(selectedDate);
@@ -156,11 +205,7 @@ let lastCorrectionBolusIndex = -6;
 let lastEarlyBolusIndex = -6;
 let newExpectedBolusBars = []; // Temporary array to hold bars before setting state
 
-const [earlyBolusIndexes, setEarlyBolusIndexes] = useState({});
-const [supplementalBolusIndexes, setSupplementalBolusIndexes] = useState({});
-const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
-const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
-const [expectedBolusBars, setExpectedBolusBars] = useState([]);
+
 
 let spikeStart = null;
 let lastNoBolusIndex = -6;
@@ -469,7 +514,7 @@ const detectEarlyBolus = (data, bolusData, spikeTimes) => {
   }
   setEarlyBolusIndexes(updatedIndexes); // ✅ Update state with detected early boluses
 };
-
+let _openchatParams = '';
 const detectExpectedBolus = (data,bolusData) => {
   let highBgStart = null;
   
@@ -575,6 +620,11 @@ const detectSupplementalBolus = (bolusData) => {
   }
   setSupplementalBolusIndexes(newSupplementalBolusIndexes);
 setMajorEvents(majorEventsList);
+
+  for (let i = 0; i < majorEventsList.length; i++) {
+   _openchatParams += majorEventsList[i][0] + "|" + majorEventsList[i][1] + "|" + majorEventsList[i][2].replace(/\n/g, '') + "|" + majorEventsList[i][5] + " *END LINE* ";
+  }
+  console.log(_openchatParams);
 };
 
 
@@ -660,7 +710,7 @@ const chartData = {
         label: "CGM Glucose Levels",
         data: cgmData,
         borderColor: "rgb(75, 192, 192)",
-        backgroundColor: "rgba(187, 255, 255, 0.2)",
+        backgroundColor: "rgba(173, 170, 190, 0.2)",
         pointRadius: 4,
         pointBackgroundColor: (context) => getBgPointColor(context), // ✅ Apply dynamic color function
             fill: true,
@@ -672,7 +722,7 @@ const chartData = {
         backgroundColor: (context) => getBolusBarColor(context),
         borderColor:  (context) => getBolusBarColor(context),
         borderWidth: 1,
-        barPercentage: 4.1,
+        barPercentage: 5.1,
         categoryPercentage: 1.0,
         yAxisID: "y2",
     },
@@ -840,6 +890,10 @@ const getBolusBarColor = (context) => {
     <div className="dailyChartHead" align="center">
       <Card>
         <CardContent>
+          {/* NEW: Daily AI Button */}
+          <div style={{ marginBottom: "10px", textAlign: "center" }}>
+            <Button onClick={handleDailyAIClick}>Daily AI</Button>
+          </div>
           <Scoreboard dailyScore={dailyScore} />
           <table border={0} cellPadding={1}>
           <tbody>
@@ -908,6 +962,55 @@ const getBolusBarColor = (context) => {
 
         </CardContent>
       </Card>
+       {/* NEW: Modal Popup */}
+       {showModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 70,
+            left: 20,
+            right: 20,
+            bottom: 0,
+            height: "90%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "left",
+            justifyContent: "left",
+            zIndex: 9999,
+            borderRadius: "4px",
+          }}
+        >
+              <div
+                style={{
+                  backgroundColor: "#fff",
+                  padding: "20px",
+                  borderRadius: "4px",
+                  position: "relative",
+                  margin: "0 20px",
+                  maxWidth: "90%",
+                  maxHeight: "90%",
+                  textAlign: "left",
+                  top: 20,
+                }}
+              >
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    right: "10px",
+                    background: "none",
+                    border: "none",
+                    fontSize: "16px",
+                    cursor: "pointer",
+                  }}
+                >
+                  X
+                </button>
+                <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent }} />
+              </div>
+        </div>
+      )}
     </div>
   );
 };
