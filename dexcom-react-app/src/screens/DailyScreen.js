@@ -41,7 +41,7 @@ const [supplementalBolusIndexes, setSupplementalBolusIndexes] = useState({});
 const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
 const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
 const [expectedBolusBars, setExpectedBolusBars] = useState([]);
-  const [selectedDate, setSelectedDate] = useState('2024-12-22');
+  const [selectedDate, setSelectedDate] = useState('2025-01-06');
   const [cgmData, setCgmData] = useState(new Array(96).fill(null));
   const [bolusData, setBolusData] = useState(new Array(96).fill(null));
   let [bolusDetails, setBolusDetails] = useState([]);
@@ -67,7 +67,7 @@ const [expectedBolusBars, setExpectedBolusBars] = useState([]);
     .map((event) => event.join("|"))
     .join(" | ");
   try {
-    const response = await fetch("http://localhost:3001/ask-gpt", {
+    const response = await fetch("http://ec2-35-91-219-173.us-west-2.compute.amazonaws.com:3001/ask-gpt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: pipeDelimited }),
@@ -890,12 +890,9 @@ const getBolusBarColor = (context) => {
     <div className="dailyChartHead" align="center">
       <Card>
         <CardContent>
-          {/* NEW: Daily AI Button */}
-          <div style={{ marginBottom: "10px", textAlign: "center" }}>
-            <Button onClick={handleDailyAIClick}>Daily AI</Button>
-          </div>
-          <Scoreboard dailyScore={dailyScore} />
-          <table border={0} cellPadding={1}>
+          
+          
+          <table border={0} cellPadding={1} style={{ paddingTop:20 }}>
           <tbody>
             <tr>
               <td className="btnDateSelect"><Button className="btnDateSelect" onClick={() => updateDate(-1)}>← Back</Button></td>
@@ -911,13 +908,12 @@ const getBolusBarColor = (context) => {
             </tr>
             </tbody>
           </table>
-          <h3 className="text-xl font-semibold">Daily Blood Glucose Data</h3>
+          <h3 className="text-xl font-semibold">Daily Blood Glucose Data&nbsp;&nbsp;&nbsp;<Button style={{ fontSize:20 }} onClick={handleDailyAIClick}>Daily AI</Button></h3>
+          
           <div style={{ height: "400px", width: "99%" }}>
             <Line data={chartData} options={chartOptions} />
           </div>
           
-          
-
           {majorEventsList.length > 0 ? (
             <table border={0} height={1} cellPadding={0} cellSpacing={0} className="events_table">
               <tbody>
@@ -964,26 +960,89 @@ const getBolusBarColor = (context) => {
       </Card>
        {/* NEW: Modal Popup */}
        {showModal && (
-        <div
+          <div
+            style={{
+              position: "fixed",
+              top: 60,
+              left: 20,
+              right: 20,
+              bottom: 0,
+              height:600,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+              borderRadius: "4px",
+              // Disable background scrolling by preventing pointer events on the underlying content
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "#fff",
+                padding: "20px",
+                borderRadius: "4px",
+                maxWidth: "75vw",
+                maxHeight: "90vh", // Use viewport units for height
+                overflowY: "auto", // Enable vertical scrolling for modal content
+                textAlign: "left",
+                height: 550,
+              }}
+            >
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  document.body.style.overflow = ""; // Re-enable background scrolling
+                }}
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  right: "10px",
+                  background: "none",
+                  border: "none",
+                  fontSize: "18px",
+                  fontWeight:"bolder",
+                  cursor: "pointer",
+                }}
+              >
+                X
+              </button>
+              <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent }} />
+            </div>
+          </div>
+        )}
+    </div>
+  );
+};
+
+export default DailyScreen;
+
+
+/*
+
+<Scoreboard dailyScore={dailyScore} />
+ <div
           style={{
             position: "fixed",
-            top: 70,
+            top: 50,
             left: 20,
             right: 20,
-            bottom: 0,
-            height: "90%",
+            bottom: 80,
+            height: 600,
             backgroundColor: "rgba(0, 0, 0, 0.5)",
             display: "flex",
             alignItems: "left",
             justifyContent: "left",
             zIndex: 9999,
             borderRadius: "4px",
+            overflow:"hidden",
           }}
         >
               <div
                 style={{
                   backgroundColor: "#fff",
-                  padding: "20px",
+                  padding: "10px",
                   borderRadius: "4px",
                   position: "relative",
                   margin: "0 20px",
@@ -1009,14 +1068,7 @@ const getBolusBarColor = (context) => {
                 </button>
                 <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent }} />
               </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default DailyScreen;
-
+*/
 
 /*
 <td 
