@@ -1,10 +1,37 @@
+
+li {
+
+    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-size:15px;
+    font-weight: normal;
+    color: rgba(0, 0, 0, 0.903);
+    padding:0px;
+}
+
+p {
+    padding: 0px;
+}
+ul {
+
+    padding:4px;
+}
+
+
 h1 {
    height:1px;
 }
 
+h2 {
+   
+   
+
+}
 h3 {
-    height:1px;
+    height:10px;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-size: 15pt;
  }
+
 
  
 .body {
@@ -23,10 +50,10 @@ h3 {
 .ai_table {
 
     width:100%;
-    font-size: 11pt;
+    font-size: 14pt;
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-    padding-bottom: 10px;
-    height:1%;
+    padding-bottom: 5px;
+    
     vertical-align: top;
     justify-content: left;
 
@@ -45,7 +72,7 @@ h3 {
 }
 
 .btnDateSelect {
-    font-size: 15pt;
+    font-size: 14pt;
     font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
     font-weight: bolder;
    
@@ -188,18 +215,4 @@ padding: 8px;
     background-repeat: no-repeat;/* prevent the image from repeating */
     vertical-align: top;
 
-}
-
-li {
-
-    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-    font-size:15px;
-    font-weight: normal;
-    color: rgba(0, 0, 0, 0.903);
-    padding:0px;
-}
-
-ul {
-
-    padding:14px;
 }
