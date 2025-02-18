@@ -23,7 +23,7 @@ const App = () => {
 
 const Header = () => (
   <div align="center">
-    <h1 >Dexcom Personal Trainer</h1>
+    <h1 >CGM Personal Trainer</h1>
      </div>
 );
 /*
@@ -35,7 +35,7 @@ const Header = () => (
 const Home = () => (
   <Card>
     <CardContent>
-      <h2>Welcome to the Dexcom App!</h2>
+      <h2>Welcome to the CGM App!</h2>
       <p>Navigate to the Daily, Weekly, or Monthly views to explore your data.</p>
     </CardContent>
   </Card>

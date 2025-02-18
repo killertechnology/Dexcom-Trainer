@@ -67,7 +67,7 @@ const [expectedBolusBars, setExpectedBolusBars] = useState([]);
     .map((event) => event.join("|"))
     .join(" | ");
   try {
-    const response = await fetch("http://ec2-35-91-219-173.us-west-2.compute.amazonaws.com:3001/ask-gpt", {
+    const response = await fetch("https://api.flex-ai.com/ask-gpt?date=${selectedDate}", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: pipeDelimited }),
@@ -895,22 +895,25 @@ const getBolusBarColor = (context) => {
           <table border={0} cellPadding={1} style={{ paddingTop:20 }}>
           <tbody>
             <tr>
-              <td className="btnDateSelect"><Button className="btnDateSelect" onClick={() => updateDate(-1)}>← Back</Button></td>
-              <td className="btnDateSelect">&nbsp;</td>
+              <td className="btnDateSelect"><td><img style={{ paddingTop:10 }} onClick={() => updateDate(-1)} src="images/back.jpg" width={90}></img></td>
+                </td>
               <td><input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="dateSelect"
             /></td>
-              <td className="btnDateSelect">&nbsp;</td>
-              <td><Button className="btnDateSelect" onClick={() => updateDate(1)}>Next →</Button></td>
+              
+              <td><img style={{ paddingTop:10 }} onClick={() => updateDate(1)} src="images/next.jpg" width={90}></img></td>
             </tr>
             </tbody>
           </table>
-          <h3 className="text-xl font-semibold">Daily Blood Glucose Data&nbsp;&nbsp;&nbsp;<Button style={{ fontSize:20 }} onClick={handleDailyAIClick}>Daily AI</Button></h3>
+          <div className="text-xl font-semibold">
+              Daily Blood Glucose Data< br />
+           <div style={{paddingTop:10}}> <Button style={{ fontSize:20, fontWeight:"bolder" }} onClick={handleDailyAIClick}>Daily AI Summary</Button></div>
+          </div>
           
-          <div style={{ height: "400px", width: "99%" }}>
+          <div style={{ height: "400px", width: "100%" }}>
             <Line data={chartData} options={chartOptions} />
           </div>
           
