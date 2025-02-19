@@ -3,7 +3,8 @@ import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Bar, Line } from "react-chartjs-2";
 import Scoreboard from "./Scoreboard"; // Adjust the path if needed
-import Chart from 'chart.js/auto';
+//import Chart from 'chart.js/auto';
+import dayjs from "dayjs";
 
 import {
   Chart as ChartJS,
@@ -12,6 +13,7 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  TimeScale,
   BarElement,
   Title,
   Tooltip,
@@ -19,8 +21,12 @@ import {
   Filler,
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
+import "chartjs-adapter-date-fns";
+
+
 
 ChartJS.register(
+  TimeScale,
   BarController,
   CategoryScale,
   LinearScale,
@@ -92,6 +98,7 @@ const [expectedBolusBars, setExpectedBolusBars] = useState([]);
       done = doneReading;
       const chunk = decoder.decode(value || new Uint8Array());
       content += chunk;
+      
       setModalContent(content);
     }
   } catch (error) {
@@ -454,7 +461,7 @@ const detectCorrectionBolus = (data, bolusData, spikeTimes) => {
                   _correctionBolusMessage,
                   'classRedBold',
                   i,
-                  "Correction Detected: (–5 points)"
+                  "Correction bolus detected"
                 ];
 
                 markedBolus[i] = 'Marked'
@@ -501,7 +508,7 @@ const detectEarlyBolus = (data, bolusData, spikeTimes) => {
                 _earlyBolusMessage,
                 'classGreenBold',
                 i,
-                "Bolus Detected: (+20 points!)"
+                "Proactive Bolus Detected"
               ];
 
               markedBolus[i] = 'Marked'
@@ -543,7 +550,7 @@ const detectExpectedBolus = (data,bolusData) => {
 
                   let { formatted: expectedBolusFormatted, militaryTime: expectedBolusMilitary } = formatTime(expectedBolusCenter);
                   let _expectedBolusMessage = "Attention! Missing your scheduled bolus might cause your blood sugar to spike, or cause you to remain at elevated glucose levels. "
-                  _expectedBolusMessage += "Remember to dose on time for better overall management.\n(–25 points!)";
+                  _expectedBolusMessage += "Remember to dose on time for better overall management.";
                   
                   majorEventsList[majorEventsList.length] = [
                     "expected", 
@@ -551,7 +558,7 @@ const detectExpectedBolus = (data,bolusData) => {
                     _expectedBolusMessage,
                     'classOrangeBold',
                     i,
-                    "Bolus Recommended (-5 points)"
+                    "Bolus Recommended"
                   ];
 
                   // ✅ Store expected bolus bar data
@@ -589,9 +596,9 @@ const detectSupplementalBolus = (bolusData) => {
           _supplementalBolusMessage+="Blood Glucose Input: " + bolusDetails[i]["Blood Glucose Input"] + " mg/dl\n";
           _supplementalBolusMessage+="Carbs Input: " + bolusDetails[i]["Carbs Input"] + " g\n";
           _supplementalBolusMessage+="Carbs Ratio: " + bolusDetails[i]["Carbs Ratio"] + " g\nㅤ\n";
-           _supplementalBolusMessage += "Great job staying on top of things! It's important to work toward your target range ";
+           _supplementalBolusMessage += "It's not easy staying ahead of your blood sugar! It's important to work toward your target range ";
           
-          _supplementalBolusMessage += "but be careful not to take your doses too close together.\n(+10 points!)";
+          _supplementalBolusMessage += "but be careful not to take your doses too close together.";
           
           _supplementalBolusMessage += "\nㅤ\n ⚠️ Analysis:\nInsulin stacking occurs when multiple doses of insulin are taken ";
           _supplementalBolusMessage += "too close together before the previous dose has fully acted, leading to an increased risk ";
@@ -608,7 +615,7 @@ const detectSupplementalBolus = (bolusData) => {
                 _supplementalBolusMessage,
                 'classOrangeBold',
                 i,
-                "Extra Bolus (-5 points)"
+                "Extra Bolus Detected"
               ];
             }
           }
@@ -821,6 +828,8 @@ const getBolusBarColor = (context) => {
   return "rgba(99, 239, 255, 0.8)"; // Default color
 };
 
+let _xAxisValIterator = 0;
+let _xAxisVal = '';
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -828,7 +837,47 @@ const getBolusBarColor = (context) => {
     scales: {
         y: { min: 0, max: 420 },
         y2: { min: 0, max: 10, position: "right", grid: { drawOnChartArea: false } },
-        x: { ticks: { autoSkip: true, maxTicksLimit: 12 } },
+        //{ ticks: { autoSkip: true, maxTicksLimit: 12 } },
+        x: { ticks: {maxTicksLimit: 13,callback: function (value, index, values) {
+
+          _xAxisVal = dayjs(value).format("h A");
+          _xAxisValIterator = _xAxisValIterator+1;
+
+          if ((value >= 0) && (value <= 4)) {  return "12 AM";  }
+          if ((value >= 5) && (value <= 14)) {  return "2 AM";  }
+          if ((value >= 14) && (value <= 21)) {  return "4 AM";  }
+          if ((value >= 21) && (value <= 28)) {  return "6 AM";  }
+          if ((value >= 28) && (value <= 35)) {  return "8 AM";  }
+          if ((value >= 35) && (value <= 42)) {  return "10 AM";  }
+          if ((value >= 42) && (value <= 49)) {  return "12 PM";  }
+          if ((value >= 49) && (value <= 56)) {  return "2 PM";  }
+          if ((value >= 56) && (value <= 64)) {  return "4 PM";  }
+          if ((value >= 64) && (value <= 72)) {  return "6 PM";  }
+          if ((value >= 72) && (value <= 80)) {  return "8 PM";  }
+          if ((value >= 80) && (value <= 88)) {  return "10 PM";  }
+
+          //_xAxisVal = _xAxisVal.repl
+
+          return _xAxisVal; // ✅ Formats to AM/PM
+        },},
+          
+/*
+        type: "time",
+          time: {
+            unit: "hour",
+            tooltipFormat: "h:mm A", // ✅ Tooltip shows "10:30 AM"
+            displayFormats: {
+              hour: "h A", // ✅ X-axis shows "10 AM", "2 PM", etc.
+            },
+          },
+          ticks: {
+            callback: function (value, index, values) {
+              return dayjs(value).format("h A"); // ✅ Formats to AM/PM
+            },
+          }, 
+*/
+
+        },
     },
     plugins: {
         tooltip: {
@@ -859,6 +908,7 @@ const getBolusBarColor = (context) => {
             bodyFont: { size: 15, weight: "normal" },  // Adjust font style
             titleFont: { size: 16, weight: "bold" }, 
             useHTML: 1,
+            width:"100%",
             bodySpacing: 1, // Increase spacing between lines
             yAlign: "top", // Prevents tooltip from going off-screen
         },
@@ -879,88 +929,130 @@ const getBolusBarColor = (context) => {
 };
 
 
-  const DailyScreen = () => {  };
+ 
   const [expandedIndex, setExpandedIndex] = useState(null);
   const toggleAccordion = (index) => {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
   const eventDescription = `Correction bolus detected!\nAdditional information here.`;
   const htmlDescription = eventDescription.replace(/\n/g, '<br />');
+
   return (
     <div className="dailyChartHead" align="center">
       <Card>
         <CardContent>
           
           
-          <table border={0} cellPadding={1} style={{ paddingTop:20 }}>
+          <table border={0} cellPadding={1} style={{ paddingTop:0, width:"1px" }}>
           <tbody>
             <tr>
-              <td className="btnDateSelect"><td><img style={{ paddingTop:10 }} onClick={() => updateDate(-1)} src="images/back.jpg" width={90}></img></td>
+                <td className="btnDateSelect">
+                  <img style={{ paddingTop:10 }} onClick={() => updateDate(-1)} src="images/back.jpg" width={90}></img>
                 </td>
-              <td><input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="dateSelect"
-            /></td>
-              
-              <td><img style={{ paddingTop:10 }} onClick={() => updateDate(1)} src="images/next.jpg" width={90}></img></td>
+                <td width={1}>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="dateSelect"
+                  />
+                </td>
+                <td>
+                  <img style={{ paddingTop:10 }} onClick={() => updateDate(1)} src="images/next.jpg" width={90}></img>
+                </td>
+            </tr>
+            <tr>
+              <td colSpan={3} align="center">
+                <div className="text-xl font-semibold">
+                  Daily Blood Glucose Data< br />
+                </div>
+              </td>
             </tr>
             </tbody>
           </table>
-          <div className="text-xl font-semibold">
-              Daily Blood Glucose Data< br />
-           <div style={{paddingTop:10}}> <Button style={{ fontSize:20, fontWeight:"bolder" }} onClick={handleDailyAIClick}>Daily AI Summary</Button></div>
-          </div>
           
-          <div style={{ height: "400px", width: "100%" }}>
+          
+          <div style={{ height: "350px", width: "95%" }}>
             <Line data={chartData} options={chartOptions} />
           </div>
           
           {majorEventsList.length > 0 ? (
             <table border={0} height={1} cellPadding={0} cellSpacing={0} className="events_table">
               <tbody>
-
+                <tr>
+                  <td align="center">
+                      <div className="text-xl font-semibold">
+                      <div style={{padding:10,paddingBottom:25,  }}>
+                        <Button style={{ fontSize:20,  width:"95%",fontWeight:"bolder" }} 
+                          onClick={handleDailyAIClick}>Daily AI Summary
+                        </Button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+            
                 
                 {majorEventsList
                     .slice()
                     .sort((a, b) => a.time - b.time) // Ensure chronological order
                     .map((msg, index) =>  (
                       
+                      
                     <React.Fragment key={index}>
+
+                      
+
                       <tr>
                       
-                        <td style={{
-                              verticalAlign:"top",
-                              padding:5
-                              
-                            }}>
+                        <td className="button-container">
                           
-                         <a className="events_table" onClick={() => toggleAccordion(index)} style={{ cursor: "pointer",  }}
-                          ><div>{msg[1]} - {msg[5]}</div>
-                                                        
-                            {expandedIndex === index && (
+                         
                             
-                            <div className="events_detail accordion-content " 
-                              dangerouslySetInnerHTML={{ __html: msg[2].replace(/\n/g, '<br />') }}>
-                            </div>
+
+                                <button className={`gradient-btn btn${majorEventsList[index][0]}`} 
+                                onClick={() => toggleAccordion(index)} style={{ cursor: "pointer"  }}>
+                                      <div className="button-header">
+                                        {msg[1]} - {msg[5]}
+                                      </div>
+                                  
+                                      {expandedIndex === index && (
+                                          <table border={0} height={1} cellPadding={0} cellSpacing={0} >
+                                          <tbody>
+                                            <tr>
+                                              <td className="button-container">
+                                                <div className="events_detail accordion-content " 
+                                                  dangerouslySetInnerHTML={{ __html: msg[2].replace(/\n/g, '<br />') }}>
+                                                </div>
+                                            </td>
+                                          </tr>
+                                          </tbody>
+                                        </table>
+                                              )}
+                                      
+                                  </button>                    
+                                  
+                                  
                              
-                           )}
-                          </a>
                           
                         </td>
-                      </tr>
+                        </tr>
+                        
                       
                     </React.Fragment>
                   ))}
               </tbody>
             </table>
+            
           ) : (
             <p>No significant events detected today.</p>
           )}
 
         </CardContent>
       </Card>
+
+      <br /><br /><br /><br />
+    
+
        {/* NEW: Modal Popup */}
        {showModal && (
           <div
@@ -1000,8 +1092,8 @@ const getBolusBarColor = (context) => {
                 }}
                 style={{
                   position: "absolute",
-                  top: "10px",
-                  right: "10px",
+                  top: "20px",
+                  right: "25px",
                   background: "none",
                   border: "none",
                   fontSize: "18px",
@@ -1011,7 +1103,8 @@ const getBolusBarColor = (context) => {
               >
                 X
               </button>
-              <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent }} />
+              <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent.replaceAll("</li>","\n<br />\n</li>") }} ></div>
+              <div className="ai_disclaimer" >*AI summary is only an analysis of your day's events. Please consult with your endocrinoligist before making any changes to your dosage/timing.</div>
             </div>
           </div>
         )}
@@ -1021,77 +1114,3 @@ const getBolusBarColor = (context) => {
 
 export default DailyScreen;
 
-
-/*
-
-<Scoreboard dailyScore={dailyScore} />
- <div
-          style={{
-            position: "fixed",
-            top: 50,
-            left: 20,
-            right: 20,
-            bottom: 80,
-            height: 600,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "left",
-            justifyContent: "left",
-            zIndex: 9999,
-            borderRadius: "4px",
-            overflow:"hidden",
-          }}
-        >
-              <div
-                style={{
-                  backgroundColor: "#fff",
-                  padding: "10px",
-                  borderRadius: "4px",
-                  position: "relative",
-                  margin: "0 20px",
-                  maxWidth: "90%",
-                  maxHeight: "90%",
-                  textAlign: "left",
-                  top: 20,
-                }}
-              >
-                <button
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    position: "absolute",
-                    top: "10px",
-                    right: "10px",
-                    background: "none",
-                    border: "none",
-                    fontSize: "16px",
-                    cursor: "pointer",
-                  }}
-                >
-                  X
-                </button>
-                <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent }} />
-              </div>
-*/
-
-/*
-<td 
-                          style={{
-                            verticalAlign:"top",
-                            padding:1,
-                            width:1
-                            
-                          }}
-                          className= {msg[3] + `-image-container` }>
-                          <a
-                                onClick={() => toggleAccordion(index)}
-                                style={{
-                                  cursor: "pointer",
-                                  verticalAlign:"top",
-                                }}
-                              >
-                                <img src="../images/spacer.gif" height={40} className="imagebutton1" />
-
-                              </a>
-                        </td>
-
-*/

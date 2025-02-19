@@ -4,6 +4,7 @@ import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 
 import DailyScreen from "./screens/DailyScreen";
+import Disclaimer from "./screens/Disclaimer";
 
 //Test
 
@@ -14,7 +15,8 @@ const App = () => {
       <div>
         <Header />
         <Routes>
-          <Route path="/" element={<DailyScreen />} />
+        <Route path="/" element={<Disclaimer />} />
+          <Route path="/DailyScreen" element={<DailyScreen />} />
         </Routes>
       </div>
     </Router>

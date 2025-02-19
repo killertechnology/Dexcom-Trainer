@@ -20,6 +20,7 @@ ul {
 h1 {
    height:1px;
    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+   padding-bottom: 30px;
 }
 
 h2 {
@@ -31,6 +32,8 @@ h3 {
     padding: 0px;
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
     font-size: 15pt;
+    display: flex;
+    height:1px;
  }
 
 
@@ -44,6 +47,7 @@ h3 {
 .dailyChartHead {
     justify-content: center;
     padding:0px;
+    width: 100%;
     
 }
 
@@ -54,8 +58,8 @@ h3 {
 }
 .ai_table {
 
-    width:100%;
-    font-size: 14pt;
+    width:90%;
+    font-size: 13pt;
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
     padding-bottom: 5px;
     
@@ -64,6 +68,15 @@ h3 {
 
 }
 
+.ai_disclaimer {
+    width:100%;
+    font-size: 14pt;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    padding-bottom: 5px;
+    color:red;
+    vertical-align: top;
+    justify-content: left;
+}
 .dateSelect {
     font-size: 14pt;
     font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
@@ -88,8 +101,7 @@ h3 {
 
 .scoreboard {
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-font-size: 14pt;
-width:70%;
+font-size: 11pt;
 padding: 8px;
 }
 
@@ -108,23 +120,22 @@ padding: 8px;
     width:100%;
     font-size: 11pt;
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-    padding-bottom: 10px;
-    height:1%;
-    vertical-align: top;
-    justify-content: center;
+    padding-left: 10px;
+    text-align: center;
+   /* justify-content: center;*/
    
     /* background-color: #d8cbb5; */
 }
 .events_detail {
 
-    width:90%;
+    display:inline;
+    /*width:95%;*/
     font-size: 11pt;
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    border-radius: 10px;
     padding: 10px;
-    height:1%;
-    vertical-align: top;
-    justify-content: center;
-    background-color: #e8e8e8;
+    text-align: left;
+    background-color: #b9b9b9;
 }
 
 .classYellowBold {
@@ -218,4 +229,68 @@ padding: 8px;
     background-repeat: no-repeat;/* prevent the image from repeating */
     vertical-align: top;
 
+}
+
+.button-header {
+    padding: 8px;
+    vertical-align:baseline;
+    text-align: left;
+    }
+
+.button-container {
+    display: flex;
+    justify-content: left;
+    gap: 35px;
+    padding: 7px;
+    
+    
+}
+
+/* Base button styles */
+.gradient-btn {
+    width: 97%;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    height: min-content;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover effect */
+.gradient-btn:hover {
+    transform: scale(1.03);
+    width:97%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Unique gradients for each button */
+
+.btnearly {
+    background: linear-gradient(135deg, #3697f8, #185a9d);
+}
+.btnexpected {
+    background: linear-gradient(135deg, #b1a910,#b1a910);
+}
+
+.btn2 {
+    background: linear-gradient(135deg, #6a11cb, #2575fc);
+}
+
+.btncorrection {
+    background: linear-gradient(135deg, #ff5f65,#ff5f65);
+}
+
+.btn {
+    background: linear-gradient(135deg, #185a9d, #43cea2);
+}
+
+.btnsupplemental {
+    background: linear-gradient(135deg, #ff4b1f, #f8db01);
+}
+
+.btnSpike {
+    background: linear-gradient(135deg, #43cea2,  #bccd01);
 }
