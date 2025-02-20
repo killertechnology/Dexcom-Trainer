@@ -42,12 +42,12 @@ ChartJS.register(
 
 const DailyScreen = () => {
   const [majorEventsList,setMajorEvents] = useState([]);
-const [earlyBolusIndexes, setEarlyBolusIndexes] = useState({});
-const [supplementalBolusIndexes, setSupplementalBolusIndexes] = useState({});
-const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
-const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
-const [expectedBolusBars, setExpectedBolusBars] = useState([]);
-  const [selectedDate, setSelectedDate] = useState('2025-01-06');
+  const [earlyBolusIndexes, setEarlyBolusIndexes] = useState({});
+  const [supplementalBolusIndexes, setSupplementalBolusIndexes] = useState({});
+  const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
+  const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
+  const [expectedBolusBars, setExpectedBolusBars] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('2025-01-23');
   const [cgmData, setCgmData] = useState(new Array(96).fill(null));
   const [bolusData, setBolusData] = useState(new Array(96).fill(null));
   let [bolusDetails, setBolusDetails] = useState([]);
@@ -62,51 +62,60 @@ const [expectedBolusBars, setExpectedBolusBars] = useState([]);
   const markedBolus = [];
   const [spikeAnnotations, setSpikeAnnotations] = useState([]);
   const [dailyScore, setDailyScore] = useState(null);
- // New state for modal popup
- const [showModal, setShowModal] = useState(false);
- const [modalContent, setModalContent] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [modalContent, setModalContent] = useState("");
+  const [showSpinner, setShowSpinner] = useState(false);
 
 
- const handleDailyAIClick = async () => {
-  // Build a pipe-delimited string from majorEventsList.
-  const pipeDelimited = majorEventsList
-    .map((event) => event.join("|"))
-    .join(" | ");
-  try {
-    const response = await fetch("https://api.flex-ai.com/ask-gpt?date=${selectedDate}", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: pipeDelimited }),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch AI summary");
+  const handleDailyAIClick = async () => {
+    // Build a pipe-delimited string from majorEventsList.
+    const pipeDelimited = majorEventsList
+      .map((event) => event.join("|"))
+      .join(" | ");
+  
+    try {
+      // Show spinner before fetching data
+      setShowSpinner(true); // Assuming you have a state for spinner: const [showSpinner, setShowSpinner] = useState(false);
+  
+      const response = await fetch(`https://api.flex-ai.com/ask-gpt?date=${selectedDate}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: pipeDelimited }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to fetch AI summary");
+      }
+  
+      // Open the modal and hide the spinner
+      setShowModal(true);
+      setModalContent(""); // Reset modal content
+      setShowSpinner(false); 
+  
+      // Set up the reader and decoder for streaming
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+      let content = "";
+  
+      // Loop through the stream and update the modal content
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunk = decoder.decode(value || new Uint8Array());
+        content += chunk;
+  
+        setModalContent(content);
+      }
+    } catch (error) {
+      console.error(error);
+      setModalContent("Error fetching summary.");
+      setShowModal(true);
+      setShowSpinner(false); // Hide spinner on error
     }
+  };
 
-    // Open the modal immediately
-    setShowModal(true);
-    setModalContent(""); // Reset modal content
-
-    // Set up the reader and decoder for streaming
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let done = false;
-    let content = "";
-
-    // Loop through the stream and update the modal content
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      const chunk = decoder.decode(value || new Uint8Array());
-      content += chunk;
-      
-      setModalContent(content);
-    }
-  } catch (error) {
-    console.error(error);
-    setModalContent("Error fetching summary.");
-    setShowModal(true);
-  }
-};
+  
 
 
   useEffect(() => {
@@ -442,13 +451,13 @@ const detectCorrectionBolus = (data, bolusData, spikeTimes) => {
                 _correctionBolusMessage+="Blood Glucose Input: " + bolusDetails[i]["Blood Glucose Input"] + " mg/dl\n";
                 _correctionBolusMessage+="Carbs Input: " + bolusDetails[i]["Carbs Input"] + " g\n";
                 _correctionBolusMessage+="Carbs Ratio: " + bolusDetails[i]["Carbs Ratio"] + " g\nㅤ\n";
-                _correctionBolusMessage += " ⚠️ Heads up! Administering your bolus correction after the ideal time can ";
+                _correctionBolusMessage += " ⚠️ Heads up! Administering your bolus after the ideal time can ";
                 _correctionBolusMessage += "lead to higher post-meal blood sugar levels. Aim for a more timely dose with ";
-                _correctionBolusMessage += "accurately estimated carbs in order to improve control.\n";
+                _correctionBolusMessage += "accurately estimated carbs to improve control.\n";
                 
                 if (spikeStart[1]>200){
                   _correctionBolusMessage+="\nㅤ\n 📊 Analysis:\nBG increased close to " + spikeStart[1] + ", even after the ";
-                  _correctionBolusMessage+="bolus. It sounds like you may have under-estimated the amount of carbs for this meal, ";
+                  _correctionBolusMessage+="bolus. You may have under-estimated the carbs for this meal, ";
                   _correctionBolusMessage+="or did not provide enough time for the bolus to kick-in before eating.";
                 }
                 // ✅ Store this bolus in the state to prevent duplicates
@@ -596,7 +605,7 @@ const detectSupplementalBolus = (bolusData) => {
           _supplementalBolusMessage+="Blood Glucose Input: " + bolusDetails[i]["Blood Glucose Input"] + " mg/dl\n";
           _supplementalBolusMessage+="Carbs Input: " + bolusDetails[i]["Carbs Input"] + " g\n";
           _supplementalBolusMessage+="Carbs Ratio: " + bolusDetails[i]["Carbs Ratio"] + " g\nㅤ\n";
-           _supplementalBolusMessage += "It's not easy staying ahead of your blood sugar! It's important to work toward your target range ";
+           _supplementalBolusMessage += "It's important to work toward your target range ";
           
           _supplementalBolusMessage += "but be careful not to take your doses too close together.";
           
@@ -860,23 +869,6 @@ let _xAxisVal = '';
 
           return _xAxisVal; // ✅ Formats to AM/PM
         },},
-          
-/*
-        type: "time",
-          time: {
-            unit: "hour",
-            tooltipFormat: "h:mm A", // ✅ Tooltip shows "10:30 AM"
-            displayFormats: {
-              hour: "h A", // ✅ X-axis shows "10 AM", "2 PM", etc.
-            },
-          },
-          ticks: {
-            callback: function (value, index, values) {
-              return dayjs(value).format("h A"); // ✅ Formats to AM/PM
-            },
-          }, 
-*/
-
         },
     },
     plugins: {
@@ -908,7 +900,7 @@ let _xAxisVal = '';
             bodyFont: { size: 15, weight: "normal" },  // Adjust font style
             titleFont: { size: 16, weight: "bold" }, 
             useHTML: 1,
-            width:"100%",
+            maxWidth:"100%",
             bodySpacing: 1, // Increase spacing between lines
             yAlign: "top", // Prevents tooltip from going off-screen
         },
@@ -1052,6 +1044,13 @@ let _xAxisVal = '';
 
       <br /><br /><br /><br />
     
+        {showSpinner && (
+          <div className="spinner-container">
+            <div className="spinner"></div>
+            <p>Loading AI Summary...</p>
+          </div>
+        )}
+
 
        {/* NEW: Modal Popup */}
        {showModal && (
@@ -1078,7 +1077,7 @@ let _xAxisVal = '';
                 backgroundColor: "#fff",
                 padding: "20px",
                 borderRadius: "4px",
-                maxWidth: "75vw",
+                maxWidth: "87vw",
                 maxHeight: "90vh", // Use viewport units for height
                 overflowY: "auto", // Enable vertical scrolling for modal content
                 textAlign: "left",
@@ -1104,7 +1103,7 @@ let _xAxisVal = '';
                 X
               </button>
               <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent.replaceAll("</li>","\n<br />\n</li>") }} ></div>
-              <div className="ai_disclaimer" >*AI summary is only an analysis of your day's events. Please consult with your endocrinoligist before making any changes to your dosage/timing.</div>
+              <div className="ai_disclaimer" >*AI summary is only an analysis of your day's events. Always consult with your endocrinoligist before making any changes to your dosage/timing.</div>
             </div>
           </div>
         )}
