@@ -47,7 +47,7 @@ const DailyScreen = () => {
   const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
   const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
   const [expectedBolusBars, setExpectedBolusBars] = useState([]);
-  const [selectedDate, setSelectedDate] = useState('2025-01-23');
+  const [selectedDate, setSelectedDate] = useState('2025-01-22');
   const [cgmData, setCgmData] = useState(new Array(96).fill(null));
   const [bolusData, setBolusData] = useState(new Array(96).fill(null));
   let [bolusDetails, setBolusDetails] = useState([]);
@@ -115,9 +115,6 @@ const DailyScreen = () => {
     }
   };
 
-  
-
-
   useEffect(() => {
     fetchData(selectedDate);
   }, [selectedDate]);
@@ -133,9 +130,7 @@ useEffect(() => {
 let dataRequested = false;
 
   const fetchData = (date) => {
- 
-    console.log("fetching data");
-    
+     console.log("fetching data");
     
     if (!dataRequested){
       dataRequested=true;
@@ -220,9 +215,6 @@ let spikes = [];
 let lastCorrectionBolusIndex = -6;
 let lastEarlyBolusIndex = -6;
 let newExpectedBolusBars = []; // Temporary array to hold bars before setting state
-
-
-
 let spikeStart = null;
 let lastNoBolusIndex = -6;
 let spikeEnd = null;
@@ -236,10 +228,10 @@ useEffect(() => {
   setExpectedBolusBars([...newExpectedBolusBars]);
 }, []);  // ✅ FIX: Empty dependency array to run only once on mount
 
-let numIntervalsForSpikeA = 3; // 120 minutes (assuming 15-minute intervals)
+let numIntervalsForSpikeA = 5; // 120 minutes (assuming 15-minute intervals)
 let spikeIncreaseThresholdA = 50;
 
-let numIntervalsForSpikeB = 2;  // 60 minutes (assuming 15-minute intervals)
+let numIntervalsForSpikeB = 8;  // 60 minutes (assuming 15-minute intervals)
 let spikeIncreaseThresholdB = 65;
 
   const checkForBGSpike = (data, i) => {  // ✅ Main Function: Check If a Spike Occurs
@@ -251,11 +243,11 @@ let spikeIncreaseThresholdB = 65;
   // ✅ Returns TRUE if BG increases meet the threshold & new values are high
   if (
     bgIncreaseOverXmin >= spikeIncreaseThresholdA 
-   //&& bgIncreaseOverYmin >= spikeIncreaseThresholdB
+  //|| bgIncreaseOverYmin >= spikeIncreaseThresholdB
     ) 
     {
       //return true;
-        if (newBgValueXminAhead > 205 
+        if (newBgValueXminAhead > 200 
           || newBgValueYminAhead > 220
         ){
           return true;
@@ -293,8 +285,9 @@ const detectBgSpikes = (data) => {
               let { formatted, militaryTime } = formatTime(i);
               
               lastSpikeIndex = i;
-              troughStart = findTroughStart(data, i);
               peakEnd = findPeakEnd(data, i);
+              troughStart = findTroughStart(data, peakEnd);
+              
 
               if (spikeTimes.indexOf(troughStart) < 0){
                 spikeAnnotations.push({ xMin: troughStart, xMax: peakEnd });
@@ -308,7 +301,7 @@ const detectBgSpikes = (data) => {
                 ("🚀 " +  formatted),
                 'This is normal after a meal or snack.',
                 'classYellowBold',
-                i,
+                troughStart,
                 " Carb Increase (spike) detected"
               ];
 
@@ -323,7 +316,7 @@ const detectBgSpikes = (data) => {
                 annotations.push({
                     type: "box",
                     xMin: troughStart,
-                    xMax: peakEnd+1,
+                    xMax: peakEnd,
                     backgroundColor: "rgba(255, 255, 0, 0.2)",
                     borderWidth: 0,
                     drawTime: "beforeDatasetsDraw",
@@ -342,13 +335,44 @@ const detectBgSpikes = (data) => {
   */
 
 // ✅ Finds lowest point before a spike (Trough)
+
+
+const checkTroughNextPoint = (data,troughStart) => {
+
+    if (data[troughStart - 1] - data[troughStart] <= -1) { return true; }
+    if (data[troughStart - 2] <= data[troughStart]) { return true; }
+    //if (data[troughStart-4] <= data[troughStart]) { return true; }
+
+}
 const findTroughStart = (data, i) => {
+  let troughStart = i;
+  while (troughStart > 0) {
+    
+    if (checkTroughNextPoint(data, troughStart)) {
+      troughStart--;
+    }
+    else{
+      break;
+    }
+     // && ((data[troughStart] - data[troughStart-4] >10))
+      
+    //{
+    //  
+    
+      
+  }
+  return troughStart;
+};
+
+const findTroughStartOLD = (data, i) => {
   let troughStart = i;
   while (troughStart > 0) {
     
     if (
       (data[troughStart - 1] - data[troughStart] <= -1) 
-      && (data[troughStart - 2] <= data[troughStart])
+      || (data[troughStart - 2] <= data[troughStart])
+      || ((data[troughStart-4] <= data[troughStart]))
+      && ((data[troughStart] - data[troughStart-4] >10))
       
     ){
       troughStart--;
@@ -367,15 +391,23 @@ const findPeakEnd = (data, i) => {
   while (peakEnd < data.length) {
     if (
       (data[peakEnd + 2] >= (data[peakEnd])) 
-      && (data[peakEnd + 4] >= (data[peakEnd]))
-      || (data[peakEnd + 7] >= (data[peakEnd]))
+      && (data[peakEnd + 4] >= (data[peakEnd])
+      && (data[peakEnd]>200))
+      || (data[peakEnd + 5] >= (data[peakEnd])
+      || (data[peakEnd + 1] > data[peakEnd])
+     )
       ) {   // || ((data[peakEnd + 3] >= (data[peakEnd])))
-      peakEnd++;
+      
+        peakEnd++;
+
+        
       
     } 
     else{ 
       break;
     }
+
+
   }
   //spikeDetected = false
   return peakEnd;
@@ -533,16 +565,15 @@ const detectEarlyBolus = (data, bolusData, spikeTimes) => {
 let _openchatParams = '';
 const detectExpectedBolus = (data,bolusData) => {
   let highBgStart = null;
-  
 
   for (let i = 0; i < data.length; i++) {
-      if (data[i] !== null && data[i] > 250) { 
+      if (data[i] !== null && data[i] > 200) { 
           if (highBgStart === null) {
               highBgStart = i; 
           }
 
-          if (i - highBgStart >= 12) {  
-              let noBolusDetected = !bolusData.slice(highBgStart, i).some(bolus => bolus !== null);
+          if (i - highBgStart >= 10) {  
+              let noBolusDetected = !bolusData.slice(highBgStart-5, i).some(bolus => bolus !== null);
 
               if (noBolusDetected) { 
                   let expectedBolusStart = highBgStart;
@@ -551,7 +582,7 @@ const detectExpectedBolus = (data,bolusData) => {
                   while (
                       expectedBolusEnd < data.length &&
                       data[expectedBolusEnd] !== null &&
-                      data[expectedBolusEnd] > 250 
+                      data[expectedBolusEnd] > 200 
                       //&& bolusData[expectedBolusEnd] === null
                   ) { expectedBolusEnd++; }
 
