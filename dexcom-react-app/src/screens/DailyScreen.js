@@ -3,7 +3,8 @@ import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Bar, Line } from "react-chartjs-2";
 import Scoreboard from "./Scoreboard"; // Adjust the path if needed
-import Chart from 'chart.js/auto';
+//import Chart from 'chart.js/auto';
+import dayjs from "dayjs";
 
 import {
   Chart as ChartJS,
@@ -12,6 +13,7 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  TimeScale,
   BarElement,
   Title,
   Tooltip,
@@ -19,8 +21,12 @@ import {
   Filler,
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
+import "chartjs-adapter-date-fns";
+
+
 
 ChartJS.register(
+  TimeScale,
   BarController,
   CategoryScale,
   LinearScale,
@@ -36,12 +42,12 @@ ChartJS.register(
 
 const DailyScreen = () => {
   const [majorEventsList,setMajorEvents] = useState([]);
-const [earlyBolusIndexes, setEarlyBolusIndexes] = useState({});
-const [supplementalBolusIndexes, setSupplementalBolusIndexes] = useState({});
-const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
-const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
-const [expectedBolusBars, setExpectedBolusBars] = useState([]);
-  const [selectedDate, setSelectedDate] = useState('2025-01-06');
+  const [earlyBolusIndexes, setEarlyBolusIndexes] = useState({});
+  const [supplementalBolusIndexes, setSupplementalBolusIndexes] = useState({});
+  const [correctionBolusIndexes, setCorrectionBolusIndexes] = useState({});
+  const [expectedBolusIndexes, setExpectedBolusIndexes] = useState({});
+  const [expectedBolusBars, setExpectedBolusBars] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('2025-01-22');
   const [cgmData, setCgmData] = useState(new Array(96).fill(null));
   const [bolusData, setBolusData] = useState(new Array(96).fill(null));
   let [bolusDetails, setBolusDetails] = useState([]);
@@ -56,51 +62,58 @@ const [expectedBolusBars, setExpectedBolusBars] = useState([]);
   const markedBolus = [];
   const [spikeAnnotations, setSpikeAnnotations] = useState([]);
   const [dailyScore, setDailyScore] = useState(null);
- // New state for modal popup
- const [showModal, setShowModal] = useState(false);
- const [modalContent, setModalContent] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [modalContent, setModalContent] = useState("");
+  const [showSpinner, setShowSpinner] = useState(false);
 
 
- const handleDailyAIClick = async () => {
-  // Build a pipe-delimited string from majorEventsList.
-  const pipeDelimited = majorEventsList
-    .map((event) => event.join("|"))
-    .join(" | ");
-  try {
-    const response = await fetch("http://ec2-35-91-219-173.us-west-2.compute.amazonaws.com:3001/ask-gpt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: pipeDelimited }),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch AI summary");
+  const handleDailyAIClick = async () => {
+    // Build a pipe-delimited string from majorEventsList.
+    const pipeDelimited = majorEventsList
+      .map((event) => event.join("|"))
+      .join(" | ");
+  
+    try {
+      // Show spinner before fetching data
+      setShowSpinner(true); // Assuming you have a state for spinner: const [showSpinner, setShowSpinner] = useState(false);
+  
+      const response = await fetch(`https://api.flex-ai.com/ask-gpt?date=${selectedDate}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: pipeDelimited }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to fetch AI summary");
+      }
+  
+      // Open the modal and hide the spinner
+      setShowModal(true);
+      setModalContent(""); // Reset modal content
+      setShowSpinner(false); 
+  
+      // Set up the reader and decoder for streaming
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+      let content = "";
+  
+      // Loop through the stream and update the modal content
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunk = decoder.decode(value || new Uint8Array());
+        content += chunk;
+  
+        setModalContent(content);
+      }
+    } catch (error) {
+      console.error(error);
+      setModalContent("Error fetching summary.");
+      setShowModal(true);
+      setShowSpinner(false); // Hide spinner on error
     }
-
-    // Open the modal immediately
-    setShowModal(true);
-    setModalContent(""); // Reset modal content
-
-    // Set up the reader and decoder for streaming
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let done = false;
-    let content = "";
-
-    // Loop through the stream and update the modal content
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      const chunk = decoder.decode(value || new Uint8Array());
-      content += chunk;
-      setModalContent(content);
-    }
-  } catch (error) {
-    console.error(error);
-    setModalContent("Error fetching summary.");
-    setShowModal(true);
-  }
-};
-
+  };
 
   useEffect(() => {
     fetchData(selectedDate);
@@ -117,9 +130,7 @@ useEffect(() => {
 let dataRequested = false;
 
   const fetchData = (date) => {
- 
-    console.log("fetching data");
-    
+     console.log("fetching data");
     
     if (!dataRequested){
       dataRequested=true;
@@ -204,9 +215,6 @@ let spikes = [];
 let lastCorrectionBolusIndex = -6;
 let lastEarlyBolusIndex = -6;
 let newExpectedBolusBars = []; // Temporary array to hold bars before setting state
-
-
-
 let spikeStart = null;
 let lastNoBolusIndex = -6;
 let spikeEnd = null;
@@ -220,10 +228,10 @@ useEffect(() => {
   setExpectedBolusBars([...newExpectedBolusBars]);
 }, []);  // ✅ FIX: Empty dependency array to run only once on mount
 
-let numIntervalsForSpikeA = 3; // 120 minutes (assuming 15-minute intervals)
+let numIntervalsForSpikeA = 5; // 120 minutes (assuming 15-minute intervals)
 let spikeIncreaseThresholdA = 50;
 
-let numIntervalsForSpikeB = 2;  // 60 minutes (assuming 15-minute intervals)
+let numIntervalsForSpikeB = 8;  // 60 minutes (assuming 15-minute intervals)
 let spikeIncreaseThresholdB = 65;
 
   const checkForBGSpike = (data, i) => {  // ✅ Main Function: Check If a Spike Occurs
@@ -235,11 +243,11 @@ let spikeIncreaseThresholdB = 65;
   // ✅ Returns TRUE if BG increases meet the threshold & new values are high
   if (
     bgIncreaseOverXmin >= spikeIncreaseThresholdA 
-   //&& bgIncreaseOverYmin >= spikeIncreaseThresholdB
+  //|| bgIncreaseOverYmin >= spikeIncreaseThresholdB
     ) 
     {
       //return true;
-        if (newBgValueXminAhead > 205 
+        if (newBgValueXminAhead > 200 
           || newBgValueYminAhead > 220
         ){
           return true;
@@ -277,8 +285,9 @@ const detectBgSpikes = (data) => {
               let { formatted, militaryTime } = formatTime(i);
               
               lastSpikeIndex = i;
-              troughStart = findTroughStart(data, i);
               peakEnd = findPeakEnd(data, i);
+              troughStart = findTroughStart(data, peakEnd);
+              
 
               if (spikeTimes.indexOf(troughStart) < 0){
                 spikeAnnotations.push({ xMin: troughStart, xMax: peakEnd });
@@ -292,7 +301,7 @@ const detectBgSpikes = (data) => {
                 ("🚀 " +  formatted),
                 'This is normal after a meal or snack.',
                 'classYellowBold',
-                i,
+                troughStart,
                 " Carb Increase (spike) detected"
               ];
 
@@ -307,7 +316,7 @@ const detectBgSpikes = (data) => {
                 annotations.push({
                     type: "box",
                     xMin: troughStart,
-                    xMax: peakEnd+1,
+                    xMax: peakEnd,
                     backgroundColor: "rgba(255, 255, 0, 0.2)",
                     borderWidth: 0,
                     drawTime: "beforeDatasetsDraw",
@@ -326,13 +335,44 @@ const detectBgSpikes = (data) => {
   */
 
 // ✅ Finds lowest point before a spike (Trough)
+
+
+const checkTroughNextPoint = (data,troughStart) => {
+
+    if (data[troughStart - 1] - data[troughStart] <= -1) { return true; }
+    if (data[troughStart - 2] <= data[troughStart]) { return true; }
+    //if (data[troughStart-4] <= data[troughStart]) { return true; }
+
+}
 const findTroughStart = (data, i) => {
+  let troughStart = i;
+  while (troughStart > 0) {
+    
+    if (checkTroughNextPoint(data, troughStart)) {
+      troughStart--;
+    }
+    else{
+      break;
+    }
+     // && ((data[troughStart] - data[troughStart-4] >10))
+      
+    //{
+    //  
+    
+      
+  }
+  return troughStart;
+};
+
+const findTroughStartOLD = (data, i) => {
   let troughStart = i;
   while (troughStart > 0) {
     
     if (
       (data[troughStart - 1] - data[troughStart] <= -1) 
-      && (data[troughStart - 2] <= data[troughStart])
+      || (data[troughStart - 2] <= data[troughStart])
+      || ((data[troughStart-4] <= data[troughStart]))
+      && ((data[troughStart] - data[troughStart-4] >10))
       
     ){
       troughStart--;
@@ -351,15 +391,23 @@ const findPeakEnd = (data, i) => {
   while (peakEnd < data.length) {
     if (
       (data[peakEnd + 2] >= (data[peakEnd])) 
-      && (data[peakEnd + 4] >= (data[peakEnd]))
-      || (data[peakEnd + 7] >= (data[peakEnd]))
+      && (data[peakEnd + 4] >= (data[peakEnd])
+      && (data[peakEnd]>200))
+      || (data[peakEnd + 5] >= (data[peakEnd])
+      || (data[peakEnd + 1] > data[peakEnd])
+     )
       ) {   // || ((data[peakEnd + 3] >= (data[peakEnd])))
-      peakEnd++;
+      
+        peakEnd++;
+
+        
       
     } 
     else{ 
       break;
     }
+
+
   }
   //spikeDetected = false
   return peakEnd;
@@ -435,13 +483,13 @@ const detectCorrectionBolus = (data, bolusData, spikeTimes) => {
                 _correctionBolusMessage+="Blood Glucose Input: " + bolusDetails[i]["Blood Glucose Input"] + " mg/dl\n";
                 _correctionBolusMessage+="Carbs Input: " + bolusDetails[i]["Carbs Input"] + " g\n";
                 _correctionBolusMessage+="Carbs Ratio: " + bolusDetails[i]["Carbs Ratio"] + " g\nㅤ\n";
-                _correctionBolusMessage += " ⚠️ Heads up! Administering your bolus correction after the ideal time can ";
+                _correctionBolusMessage += " ⚠️ Heads up! Administering your bolus after the ideal time can ";
                 _correctionBolusMessage += "lead to higher post-meal blood sugar levels. Aim for a more timely dose with ";
-                _correctionBolusMessage += "accurately estimated carbs in order to improve control.\n";
+                _correctionBolusMessage += "accurately estimated carbs to improve control.\n";
                 
                 if (spikeStart[1]>200){
                   _correctionBolusMessage+="\nㅤ\n 📊 Analysis:\nBG increased close to " + spikeStart[1] + ", even after the ";
-                  _correctionBolusMessage+="bolus. It sounds like you may have under-estimated the amount of carbs for this meal, ";
+                  _correctionBolusMessage+="bolus. You may have under-estimated the carbs for this meal, ";
                   _correctionBolusMessage+="or did not provide enough time for the bolus to kick-in before eating.";
                 }
                 // ✅ Store this bolus in the state to prevent duplicates
@@ -454,7 +502,7 @@ const detectCorrectionBolus = (data, bolusData, spikeTimes) => {
                   _correctionBolusMessage,
                   'classRedBold',
                   i,
-                  "Correction Detected: (–5 points)"
+                  "Correction bolus detected"
                 ];
 
                 markedBolus[i] = 'Marked'
@@ -501,7 +549,7 @@ const detectEarlyBolus = (data, bolusData, spikeTimes) => {
                 _earlyBolusMessage,
                 'classGreenBold',
                 i,
-                "Bolus Detected: (+20 points!)"
+                "Proactive Bolus Detected"
               ];
 
               markedBolus[i] = 'Marked'
@@ -517,16 +565,15 @@ const detectEarlyBolus = (data, bolusData, spikeTimes) => {
 let _openchatParams = '';
 const detectExpectedBolus = (data,bolusData) => {
   let highBgStart = null;
-  
 
   for (let i = 0; i < data.length; i++) {
-      if (data[i] !== null && data[i] > 250) { 
+      if (data[i] !== null && data[i] > 200) { 
           if (highBgStart === null) {
               highBgStart = i; 
           }
 
-          if (i - highBgStart >= 12) {  
-              let noBolusDetected = !bolusData.slice(highBgStart, i).some(bolus => bolus !== null);
+          if (i - highBgStart >= 10) {  
+              let noBolusDetected = !bolusData.slice(highBgStart-5, i).some(bolus => bolus !== null);
 
               if (noBolusDetected) { 
                   let expectedBolusStart = highBgStart;
@@ -535,7 +582,7 @@ const detectExpectedBolus = (data,bolusData) => {
                   while (
                       expectedBolusEnd < data.length &&
                       data[expectedBolusEnd] !== null &&
-                      data[expectedBolusEnd] > 250 
+                      data[expectedBolusEnd] > 200 
                       //&& bolusData[expectedBolusEnd] === null
                   ) { expectedBolusEnd++; }
 
@@ -543,7 +590,7 @@ const detectExpectedBolus = (data,bolusData) => {
 
                   let { formatted: expectedBolusFormatted, militaryTime: expectedBolusMilitary } = formatTime(expectedBolusCenter);
                   let _expectedBolusMessage = "Attention! Missing your scheduled bolus might cause your blood sugar to spike, or cause you to remain at elevated glucose levels. "
-                  _expectedBolusMessage += "Remember to dose on time for better overall management.\n(–25 points!)";
+                  _expectedBolusMessage += "Remember to dose on time for better overall management.";
                   
                   majorEventsList[majorEventsList.length] = [
                     "expected", 
@@ -551,7 +598,7 @@ const detectExpectedBolus = (data,bolusData) => {
                     _expectedBolusMessage,
                     'classOrangeBold',
                     i,
-                    "Bolus Recommended (-5 points)"
+                    "Bolus Recommended"
                   ];
 
                   // ✅ Store expected bolus bar data
@@ -589,9 +636,9 @@ const detectSupplementalBolus = (bolusData) => {
           _supplementalBolusMessage+="Blood Glucose Input: " + bolusDetails[i]["Blood Glucose Input"] + " mg/dl\n";
           _supplementalBolusMessage+="Carbs Input: " + bolusDetails[i]["Carbs Input"] + " g\n";
           _supplementalBolusMessage+="Carbs Ratio: " + bolusDetails[i]["Carbs Ratio"] + " g\nㅤ\n";
-           _supplementalBolusMessage += "Great job staying on top of things! It's important to work toward your target range ";
+           _supplementalBolusMessage += "It's important to work toward your target range ";
           
-          _supplementalBolusMessage += "but be careful not to take your doses too close together.\n(+10 points!)";
+          _supplementalBolusMessage += "but be careful not to take your doses too close together.";
           
           _supplementalBolusMessage += "\nㅤ\n ⚠️ Analysis:\nInsulin stacking occurs when multiple doses of insulin are taken ";
           _supplementalBolusMessage += "too close together before the previous dose has fully acted, leading to an increased risk ";
@@ -608,7 +655,7 @@ const detectSupplementalBolus = (bolusData) => {
                 _supplementalBolusMessage,
                 'classOrangeBold',
                 i,
-                "Extra Bolus (-5 points)"
+                "Extra Bolus Detected"
               ];
             }
           }
@@ -821,6 +868,8 @@ const getBolusBarColor = (context) => {
   return "rgba(99, 239, 255, 0.8)"; // Default color
 };
 
+let _xAxisValIterator = 0;
+let _xAxisVal = '';
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -828,7 +877,30 @@ const getBolusBarColor = (context) => {
     scales: {
         y: { min: 0, max: 420 },
         y2: { min: 0, max: 10, position: "right", grid: { drawOnChartArea: false } },
-        x: { ticks: { autoSkip: true, maxTicksLimit: 12 } },
+        //{ ticks: { autoSkip: true, maxTicksLimit: 12 } },
+        x: { ticks: {maxTicksLimit: 13,callback: function (value, index, values) {
+
+          _xAxisVal = dayjs(value).format("h A");
+          _xAxisValIterator = _xAxisValIterator+1;
+
+          if ((value >= 0) && (value <= 4)) {  return "12 AM";  }
+          if ((value >= 5) && (value <= 14)) {  return "2 AM";  }
+          if ((value >= 14) && (value <= 21)) {  return "4 AM";  }
+          if ((value >= 21) && (value <= 28)) {  return "6 AM";  }
+          if ((value >= 28) && (value <= 35)) {  return "8 AM";  }
+          if ((value >= 35) && (value <= 42)) {  return "10 AM";  }
+          if ((value >= 42) && (value <= 49)) {  return "12 PM";  }
+          if ((value >= 49) && (value <= 56)) {  return "2 PM";  }
+          if ((value >= 56) && (value <= 64)) {  return "4 PM";  }
+          if ((value >= 64) && (value <= 72)) {  return "6 PM";  }
+          if ((value >= 72) && (value <= 80)) {  return "8 PM";  }
+          if ((value >= 80) && (value <= 88)) {  return "10 PM";  }
+
+          //_xAxisVal = _xAxisVal.repl
+
+          return _xAxisVal; // ✅ Formats to AM/PM
+        },},
+        },
     },
     plugins: {
         tooltip: {
@@ -859,6 +931,7 @@ const getBolusBarColor = (context) => {
             bodyFont: { size: 15, weight: "normal" },  // Adjust font style
             titleFont: { size: 16, weight: "bold" }, 
             useHTML: 1,
+            maxWidth:"100%",
             bodySpacing: 1, // Increase spacing between lines
             yAlign: "top", // Prevents tooltip from going off-screen
         },
@@ -879,85 +952,137 @@ const getBolusBarColor = (context) => {
 };
 
 
-  const DailyScreen = () => {  };
+ 
   const [expandedIndex, setExpandedIndex] = useState(null);
   const toggleAccordion = (index) => {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
   const eventDescription = `Correction bolus detected!\nAdditional information here.`;
   const htmlDescription = eventDescription.replace(/\n/g, '<br />');
+
   return (
     <div className="dailyChartHead" align="center">
       <Card>
         <CardContent>
           
           
-          <table border={0} cellPadding={1} style={{ paddingTop:20 }}>
+          <table border={0} cellPadding={1} style={{ paddingTop:0, width:"1px" }}>
           <tbody>
             <tr>
-              <td className="btnDateSelect"><Button className="btnDateSelect" onClick={() => updateDate(-1)}>← Back</Button></td>
-              <td className="btnDateSelect">&nbsp;</td>
-              <td><input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="dateSelect"
-            /></td>
-              <td className="btnDateSelect">&nbsp;</td>
-              <td><Button className="btnDateSelect" onClick={() => updateDate(1)}>Next →</Button></td>
+                <td className="btnDateSelect">
+                  <img style={{ paddingTop:10 }} onClick={() => updateDate(-1)} src="images/back.jpg" width={90}></img>
+                </td>
+                <td width={1}>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="dateSelect"
+                  />
+                </td>
+                <td>
+                  <img style={{ paddingTop:10 }} onClick={() => updateDate(1)} src="images/next.jpg" width={90}></img>
+                </td>
+            </tr>
+            <tr>
+              <td colSpan={3} align="center">
+                <div className="text-xl font-semibold">
+                  Daily Blood Glucose Data< br />
+                </div>
+              </td>
             </tr>
             </tbody>
           </table>
-          <h3 className="text-xl font-semibold">Daily Blood Glucose Data&nbsp;&nbsp;&nbsp;<Button style={{ fontSize:20 }} onClick={handleDailyAIClick}>Daily AI</Button></h3>
           
-          <div style={{ height: "400px", width: "99%" }}>
+          
+          <div style={{ height: "350px", width: "95%" }}>
             <Line data={chartData} options={chartOptions} />
           </div>
           
           {majorEventsList.length > 0 ? (
             <table border={0} height={1} cellPadding={0} cellSpacing={0} className="events_table">
               <tbody>
-
+                <tr>
+                  <td align="center">
+                      <div className="text-xl font-semibold">
+                      <div style={{padding:10,paddingBottom:25,  }}>
+                        <Button style={{ fontSize:20,  width:"95%",fontWeight:"bolder" }} 
+                          onClick={handleDailyAIClick}>Daily AI Summary
+                        </Button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+            
                 
                 {majorEventsList
                     .slice()
                     .sort((a, b) => a.time - b.time) // Ensure chronological order
                     .map((msg, index) =>  (
                       
+                      
                     <React.Fragment key={index}>
+
+                      
+
                       <tr>
                       
-                        <td style={{
-                              verticalAlign:"top",
-                              padding:5
-                              
-                            }}>
+                        <td className="button-container">
                           
-                         <a className="events_table" onClick={() => toggleAccordion(index)} style={{ cursor: "pointer",  }}
-                          ><div>{msg[1]} - {msg[5]}</div>
-                                                        
-                            {expandedIndex === index && (
+                         
                             
-                            <div className="events_detail accordion-content " 
-                              dangerouslySetInnerHTML={{ __html: msg[2].replace(/\n/g, '<br />') }}>
-                            </div>
+
+                                <button className={`gradient-btn btn${majorEventsList[index][0]}`} 
+                                onClick={() => toggleAccordion(index)} style={{ cursor: "pointer"  }}>
+                                      <div className="button-header">
+                                        {msg[1]} - {msg[5]}
+                                      </div>
+                                  
+                                      {expandedIndex === index && (
+                                          <table border={0} height={1} cellPadding={0} cellSpacing={0} >
+                                          <tbody>
+                                            <tr>
+                                              <td className="button-container">
+                                                <div className="events_detail accordion-content " 
+                                                  dangerouslySetInnerHTML={{ __html: msg[2].replace(/\n/g, '<br />') }}>
+                                                </div>
+                                            </td>
+                                          </tr>
+                                          </tbody>
+                                        </table>
+                                              )}
+                                      
+                                  </button>                    
+                                  
+                                  
                              
-                           )}
-                          </a>
                           
                         </td>
-                      </tr>
+                        </tr>
+                        
                       
                     </React.Fragment>
                   ))}
               </tbody>
             </table>
+            
           ) : (
             <p>No significant events detected today.</p>
           )}
 
         </CardContent>
       </Card>
+
+      <br /><br /><br /><br />
+    
+        {showSpinner && (
+          <div className="spinner-container">
+            <div className="spinner"></div>
+            <p>Loading AI Summary...</p>
+          </div>
+        )}
+
+
        {/* NEW: Modal Popup */}
        {showModal && (
           <div
@@ -983,7 +1108,7 @@ const getBolusBarColor = (context) => {
                 backgroundColor: "#fff",
                 padding: "20px",
                 borderRadius: "4px",
-                maxWidth: "75vw",
+                maxWidth: "87vw",
                 maxHeight: "90vh", // Use viewport units for height
                 overflowY: "auto", // Enable vertical scrolling for modal content
                 textAlign: "left",
@@ -997,8 +1122,8 @@ const getBolusBarColor = (context) => {
                 }}
                 style={{
                   position: "absolute",
-                  top: "10px",
-                  right: "10px",
+                  top: "20px",
+                  right: "25px",
                   background: "none",
                   border: "none",
                   fontSize: "18px",
@@ -1008,7 +1133,8 @@ const getBolusBarColor = (context) => {
               >
                 X
               </button>
-              <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent }} />
+              <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent.replaceAll("</li>","\n<br />\n</li>") }} ></div>
+              <div className="ai_disclaimer" >*AI summary is only an analysis of your day's events. Always consult with your endocrinoligist before making any changes to your dosage/timing.</div>
             </div>
           </div>
         )}
@@ -1018,77 +1144,3 @@ const getBolusBarColor = (context) => {
 
 export default DailyScreen;
 
-
-/*
-
-<Scoreboard dailyScore={dailyScore} />
- <div
-          style={{
-            position: "fixed",
-            top: 50,
-            left: 20,
-            right: 20,
-            bottom: 80,
-            height: 600,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "left",
-            justifyContent: "left",
-            zIndex: 9999,
-            borderRadius: "4px",
-            overflow:"hidden",
-          }}
-        >
-              <div
-                style={{
-                  backgroundColor: "#fff",
-                  padding: "10px",
-                  borderRadius: "4px",
-                  position: "relative",
-                  margin: "0 20px",
-                  maxWidth: "90%",
-                  maxHeight: "90%",
-                  textAlign: "left",
-                  top: 20,
-                }}
-              >
-                <button
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    position: "absolute",
-                    top: "10px",
-                    right: "10px",
-                    background: "none",
-                    border: "none",
-                    fontSize: "16px",
-                    cursor: "pointer",
-                  }}
-                >
-                  X
-                </button>
-                <div className="ai_table" dangerouslySetInnerHTML={{ __html: modalContent }} />
-              </div>
-*/
-
-/*
-<td 
-                          style={{
-                            verticalAlign:"top",
-                            padding:1,
-                            width:1
-                            
-                          }}
-                          className= {msg[3] + `-image-container` }>
-                          <a
-                                onClick={() => toggleAccordion(index)}
-                                style={{
-                                  cursor: "pointer",
-                                  verticalAlign:"top",
-                                }}
-                              >
-                                <img src="../images/spacer.gif" height={40} className="imagebutton1" />
-
-                              </a>
-                        </td>
-
-*/

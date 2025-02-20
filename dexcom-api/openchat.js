@@ -9,6 +9,15 @@ const app = express();
 const port = process.env.PORT || 3001;
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const corsOptions = {
+  origin: 'http://localhost:3000', // or use a function to dynamically set the allowed origin
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'], // add any headers your client needs
+  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+
+//app.use(cors(corsOptions));
+
 app.use(cors());
 app.use(express.json());
 
@@ -23,7 +32,7 @@ app.post("/ask-gpt", async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-
+    //res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
     // Call OpenAI with streaming enabled
     const stream = await openai.chat.completions.create({
       model: "gpt-4-turbo",
