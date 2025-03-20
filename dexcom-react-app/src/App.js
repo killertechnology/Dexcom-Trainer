@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -37,10 +37,20 @@ const Header = () => (
    
 */
 const Home = () => (
+
+  useEffect(() => {
+    if (window.gtag) {
+      window.gtag('event', 'cgm_home_page_load', {
+        event_category: 'CGM_Site',
+        event_label: 'Page Loaded'
+      });
+    }
+  }, []),
+
   <Card>
     <CardContent>
       
-            <table align="center" style={{"text-align":"left","width":"97%"}}>
+            <table align="center" style={{"textAlign":"left","width":"97%"}}>
                 <tbody>
                   <tr>
                     <td align="center">
@@ -66,7 +76,7 @@ const Home = () => (
                 </tr>
                 <tr>
                     <td valign="top" className="scoreboard">
-                    <div style={{"text-align": "center" }}>
+                    <div style={{"textAlign": "center" }}>
                       <img src="/images/home4.webp" width={"80%"} style={{ alignContent: "center" }}></img>
                     </div><br />
                     With intuitive charts, a simple AM/PM view of your day, and personalized insights, CGM Personal Trainer offers that 20/20 hindsight we all wish we had—without the guilt trips. Whether you’re a parent helping your child navigate diabetes or an adult managing it yourself, the app gives you the tools to better understand how food, insulin, and daily decisions impact blood sugar trends. It’s not just about data; it’s about feeling supported, making informed choices, and celebrating small wins along the way. CGM Personal Trainer helps turn everyday learning into long-term success.<br />
